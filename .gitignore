@@ -1,0 +1,5 @@
+vendor/
+.composer/
+composer.phar
+certs/cacert.pem
+php/sso_local.php
