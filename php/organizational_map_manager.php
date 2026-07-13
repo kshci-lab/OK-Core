@@ -125,6 +125,11 @@ if (!empty($user_ids_in_latest_group)) {
         $hasExternalized = ($resT->num_rows > 0);
         $resT->free();
         if ($hasExternalized) {
+            $hasGroupColumn = false;
+            if ($resCol = $mysqli->query("SHOW COLUMNS FROM `externalized_contents` LIKE 'group_id'")) {
+                $hasGroupColumn = ($resCol->num_rows > 0);
+                $resCol->free();
+            }
             $contentCol = 'knowledge_fragment_content';
             if ($resCol = $mysqli->query("SHOW COLUMNS FROM `externalized_contents` LIKE 'knowledge_fragments_content'")) {
                 if ($resCol->num_rows > 0) { $contentCol = 'knowledge_fragments_content'; }
@@ -132,11 +137,19 @@ if (!empty($user_ids_in_latest_group)) {
             }
             $sql_externalized = "SELECT ec.externalized_contents_id, ec.user_id, ec.selected_contents, ec.`{$contentCol}` AS knowledge_fragment_content, ec.stage1, ec.stage2, ec.stage3, ec.updated_at
                 FROM externalized_contents ec
-                WHERE ec.user_id IN ($user_ids_in_sql)
-                    AND ec.deleted = 0
+                WHERE ec.deleted = 0
                     AND ec.`{$contentCol}` IS NOT NULL
-                    AND LENGTH(TRIM(ec.`{$contentCol}`)) > 0
-                ORDER BY ec.updated_at DESC, ec.externalized_contents_id DESC";
+                    AND LENGTH(TRIM(ec.`{$contentCol}`)) > 0";
+            if ($hasGroupColumn && $selected_group_id_sql > 0) {
+                $sql_externalized .= " AND (ec.group_id = $selected_group_id_sql";
+                if (!empty($user_ids_in_sql)) {
+                    $sql_externalized .= " OR ec.user_id IN ($user_ids_in_sql)";
+                }
+                $sql_externalized .= ")";
+            } else {
+                $sql_externalized .= " AND ec.user_id IN ($user_ids_in_sql)";
+            }
+            $sql_externalized .= " ORDER BY ec.updated_at DESC, ec.externalized_contents_id DESC";
             if ($result_externalized = $mysqli->query($sql_externalized)) {
                 while ($row = $result_externalized->fetch_assoc()) {
                     $row['source_type'] = 'discussion';

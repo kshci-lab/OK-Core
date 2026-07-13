@@ -1,6 +1,11 @@
 <?php
 session_start();
 
+if (!empty($_SESSION['USERID'])) {
+    header('Location: index.php');
+    exit;
+}
+
 $errorMessage = '';
 if (!empty($_SESSION['SSO_ERROR'])) {
     $errorMessage = $_SESSION['SSO_ERROR'];

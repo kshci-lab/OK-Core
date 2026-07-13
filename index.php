@@ -1,6 +1,5 @@
 <?php
 session_start();
-require_once __DIR__ . '/php/connect_db.php';
 
 if (!isset($_SESSION['USERID'])) {
     header('Location: login.php');
@@ -12,7 +11,34 @@ if (isset($_POST['logout'])) {
     exit;
 }
 
+require_once __DIR__ . '/php/connect_db.php';
+
 $username = isset($_SESSION['USERNAME']) ? (string)$_SESSION['USERNAME'] : 'User';
+
+if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
+    $dbError = isset($db_connection_error) ? (string)$db_connection_error : 'Database connection failed.';
+    ?>
+    <!doctype html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>OK-Core</title>
+        <link rel="stylesheet" href="css/ok-core.css">
+    </head>
+    <body class="auth-page">
+        <main class="auth-box">
+            <h1>OK-Core</h1>
+            <p>開発用ログインには成功していますが、データベースがまだ準備されていません。</p>
+            <pre><?php echo htmlspecialchars($dbError, ENT_QUOTES, 'UTF-8'); ?></pre>
+            <p>まずは `ok_core` データベースを作成するか、`php/import_kf_stub.php` へ POST 疎通を確認してください。</p>
+            <a class="primary-link" href="php/import_kf_stub.php">KF stub を開く</a>
+        </main>
+    </body>
+    </html>
+    <?php
+    exit;
+}
 ?>
 <!doctype html>
 <html lang="ja">

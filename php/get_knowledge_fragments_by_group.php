@@ -205,6 +205,11 @@ if ($resT = $mysqli->query("SHOW TABLES LIKE 'externalized_contents'")) {
   $hasTable = ($resT->num_rows > 0);
   $resT->free();
   if ($hasTable) {
+    $hasGroupColumn = false;
+    if ($resCol = $mysqli->query("SHOW COLUMNS FROM `externalized_contents` LIKE 'group_id'")) {
+      $hasGroupColumn = ($resCol->num_rows > 0);
+      $resCol->free();
+    }
     $contentCol = 'knowledge_fragment_content';
     if ($resCol = $mysqli->query("SHOW COLUMNS FROM `externalized_contents` LIKE 'knowledge_fragments_content'")) {
       if ($resCol->num_rows > 0) { $contentCol = 'knowledge_fragments_content'; }
@@ -227,13 +232,28 @@ if ($resT = $mysqli->query("SHOW TABLES LIKE 'externalized_contents'")) {
     $types = '';
     $params = [];
     if ($group_id !== '') {
-      if (!$groupUserIds) {
-        $sql .= " AND 1 = 0";
+      if ($hasGroupColumn) {
+        $groupIdInt = intval($group_id, 10);
+        if ($groupUserIds) {
+          $placeholders = implode(',', array_fill(0, count($groupUserIds), '?'));
+          $sql .= " AND (ec.group_id = ? OR ec.user_id IN ($placeholders))";
+          $types = 'i' . str_repeat('s', count($groupUserIds));
+          $params[] = $groupIdInt;
+          foreach ($groupUserIds as $uid) { $params[] = $uid; }
+        } else {
+          $sql .= " AND ec.group_id = ?";
+          $types = 'i';
+          $params[] = $groupIdInt;
+        }
       } else {
-        $placeholders = implode(',', array_fill(0, count($groupUserIds), '?'));
-        $sql .= " AND ec.user_id IN ($placeholders)";
-        $types = str_repeat('s', count($groupUserIds));
-        $params = $groupUserIds;
+        if (!$groupUserIds) {
+          $sql .= " AND 1 = 0";
+        } else {
+          $placeholders = implode(',', array_fill(0, count($groupUserIds), '?'));
+          $sql .= " AND ec.user_id IN ($placeholders)";
+          $types = str_repeat('s', count($groupUserIds));
+          $params = $groupUserIds;
+        }
       }
     }
     $sql .= " ORDER BY ec.updated_at DESC, ec.externalized_contents_id DESC";
