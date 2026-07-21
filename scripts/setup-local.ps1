@@ -2,7 +2,7 @@
 param(
     [string]$PhpBin = $env:PHP_BIN,
     [string]$ComposerBin = $env:COMPOSER_BIN,
-    [string]$BaseUrl = 'http://localhost:8888/OK-Core',
+    [string]$BaseUrl = '',
     [string]$ClientId = $env:HCIMLAB_SSO_CLIENT_ID,
     [string]$ClientSecret = $env:HCIMLAB_SSO_CLIENT_SECRET,
     [string]$IdpUrl = $(if ($env:HCIMLAB_SSO_IDP_URL) { $env:HCIMLAB_SSO_IDP_URL } else { 'https://kshci-lab.net/software/hcimlab_auth' }),
@@ -139,24 +139,46 @@ function Write-SsoLocal {
     if (!$ClientSecret) { $ClientSecret = 'your-ok-core-client-secret' }
 
     $base = $BaseUrl.TrimEnd('/')
-    $redirectUri = $base + '/auth/callback'
-    $content = @"
+    $content = @'
 <?php
 
+// Generated for local/LAN development.
+$baseUrl = getenv('HCIMLAB_SSO_BASE_URL');
+if (!$baseUrl) {
+    $baseUrl = '__BASE_URL__';
+}
+if (!$baseUrl) {
+    $baseUrl = function_exists('hcimlab_sso_detect_base_url')
+        ? hcimlab_sso_detect_base_url()
+        : 'http://localhost:8888/OK-Core';
+}
+$redirectUri = getenv('HCIMLAB_SSO_REDIRECT_URI');
+if (!$redirectUri) {
+    $redirectUri = rtrim($baseUrl, '/') . '/auth/callback';
+}
+
 return array(
-    'idp_url' => '$IdpUrl',
-    'client_id' => '$ClientId',
-    'client_secret' => '$ClientSecret',
-    'base_url' => '$base',
-    'redirect_uri' => '$redirectUri',
+    'idp_url' => '__IDP_URL__',
+    'client_id' => '__CLIENT_ID__',
+    'client_secret' => '__CLIENT_SECRET__',
+    'base_url' => rtrim($baseUrl, '/'),
+    'redirect_uri' => $redirectUri,
     'scope' => 'openid profile email lab',
 );
 
-"@
+'@
+    $content = $content.Replace('__BASE_URL__', $base)
+    $content = $content.Replace('__IDP_URL__', $IdpUrl)
+    $content = $content.Replace('__CLIENT_ID__', $ClientId)
+    $content = $content.Replace('__CLIENT_SECRET__', $ClientSecret)
 
     Set-Content -Path $ssoLocalPath -Value $content -Encoding UTF8
     Write-Host 'Created php/sso_local.php.'
-    Write-Host "Register this redirect URI in HCIMLab SSO: $redirectUri"
+    if ($base) {
+        Write-Host "Register this redirect URI in HCIMLab SSO: $($base.TrimEnd('/'))/auth/callback"
+    } else {
+        Write-Host 'Register this redirect URI in HCIMLab SSO: <current-host>/OK-Core/auth/callback'
+    }
 }
 
 $resolvedPhpBin = Resolve-PhpBin -Candidate $PhpBin
@@ -183,4 +205,3 @@ Ensure-CaBundle -ProjectRoot $rootDir
 Write-SsoLocal -ProjectRoot $rootDir -BaseUrl $BaseUrl -ClientId $ClientId -ClientSecret $ClientSecret -IdpUrl $IdpUrl -ForceWrite:$Force.IsPresent
 
 Write-Host 'OK-Core local setup complete.'
-

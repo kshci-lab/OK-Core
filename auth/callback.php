@@ -1,6 +1,7 @@
 <?php
 
-session_start();
+require_once __DIR__ . '/../php/session_bootstrap.php';
+hcimlab_start_session();
 require_once __DIR__ . '/../php/hcimlab_sso.php';
 require_once __DIR__ . '/../php/connect_db.php';
 
@@ -18,11 +19,33 @@ try {
         throw new RuntimeException('SSO callback does not contain an authorization code.');
     }
 
-    $provider = hcimlab_sso_provider();
-    $provider->setPkceCode($_SESSION['HCIMLAB_SSO_PKCE']);
-    $token = $provider->getAccessToken('authorization_code', array(
-        'code' => $_GET['code'],
-    ));
+    $tokenAuthMethod = hcimlab_sso_token_auth_method();
+    $authMethodsToTry = ($tokenAuthMethod === 'auto')
+        ? array('post', 'basic')
+        : array($tokenAuthMethod);
+
+    $token = null;
+    $lastTokenError = null;
+    foreach ($authMethodsToTry as $authMethod) {
+        try {
+            $provider = hcimlab_sso_create_provider($authMethod);
+            $provider->setPkceCode($_SESSION['HCIMLAB_SSO_PKCE']);
+            $token = $provider->getAccessToken('authorization_code', array(
+                'code' => $_GET['code'],
+            ));
+            break;
+        } catch (Throwable $tokenError) {
+            $lastTokenError = $tokenError;
+            $message = strtolower($tokenError->getMessage());
+            if (strpos($message, 'invalid_client') === false && strpos($message, 'unauthorized_client') === false) {
+                throw $tokenError;
+            }
+        }
+    }
+
+    if ($token === null) {
+        throw $lastTokenError ?: new RuntimeException('SSO token exchange failed.');
+    }
 
     $values = $token->getValues();
     if (empty($values['id_token'])) {
@@ -49,8 +72,8 @@ try {
 
     unset($_SESSION['HCIMLAB_SSO_STATE'], $_SESSION['HCIMLAB_SSO_PKCE'], $_SESSION['HCIMLAB_SSO_NONCE'], $_SESSION['SSO_ERROR']);
 
-    $config = hcimlab_sso_config();
-    header('Location: ' . rtrim($config['base_url'], '/') . '/index.php');
+    $returnUrl = hcimlab_sso_resolve_client_url();
+    header('Location: ' . rtrim($returnUrl, '/') . '/index.php');
     exit;
 } catch (Throwable $e) {
     unset($_SESSION['HCIMLAB_SSO_STATE'], $_SESSION['HCIMLAB_SSO_PKCE'], $_SESSION['HCIMLAB_SSO_NONCE']);

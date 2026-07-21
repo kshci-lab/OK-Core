@@ -1,15 +1,28 @@
 <?php
 
-session_start();
+require_once __DIR__ . '/../php/session_bootstrap.php';
+hcimlab_start_session();
 require_once __DIR__ . '/../php/hcimlab_sso.php';
 
 try {
     $config = hcimlab_sso_config();
+    $clientUrl = isset($_GET['clientUrl']) ? (string)$_GET['clientUrl'] : '';
+    if ($clientUrl !== '' && hcimlab_sso_is_safe_return_url($clientUrl)) {
+        $_SESSION['HCIMLAB_SSO_CLIENT_URL'] = rtrim($clientUrl, '/');
+    }
+
+    $returnUrl = hcimlab_sso_resolve_client_url();
     if (!empty($_SESSION['USERID'])) {
-        header('Location: ' . rtrim($config['base_url'], '/') . '/index.php');
+        header('Location: ' . rtrim($returnUrl, '/') . '/index.php');
         exit;
     }
-    if (!empty($config['dev_auth'])) {
+    $mode = isset($_GET['mode']) ? (string)$_GET['mode'] : '';
+
+    if ($mode === 'dev') {
+        if (empty($config['dev_auth'])) {
+            throw new RuntimeException('Development login is disabled.');
+        }
+
         session_regenerate_id(true);
 
         $userId = isset($config['dev_user_id']) ? (int)$config['dev_user_id'] : 10001;
@@ -31,8 +44,17 @@ try {
         $_SESSION['HCIMLAB_SSO_TOKEN_EXPIRES'] = time() + 86400;
         unset($_SESSION['SSO_ERROR']);
 
-        header('Location: ' . rtrim($config['base_url'], '/') . '/index.php');
+        header('Location: ' . rtrim($returnUrl, '/') . '/index.php');
         exit;
+    }
+
+    if ($mode !== 'sso') {
+        header('Location: ' . rtrim($config['base_url'], '/') . '/login.php');
+        exit;
+    }
+
+    if (!hcimlab_sso_is_oauth_configured()) {
+        throw new RuntimeException('SSO client_id / client_secret are not configured. Use 開発用ログイン or set real SSO credentials.');
     }
 
     $provider = hcimlab_sso_provider();

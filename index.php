@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/php/session_bootstrap.php';
+hcimlab_start_session();
 
 if (!isset($_SESSION['USERID'])) {
     header('Location: login.php');

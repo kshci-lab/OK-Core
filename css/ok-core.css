@@ -319,6 +319,30 @@ button:hover,
     white-space: pre-wrap;
 }
 
+.auth-message {
+    margin: 16px 0 18px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--ok-border);
+    background: #f8fbfc;
+}
+
+.auth-message-error {
+    border-color: #e3b5b5;
+    background: #fff4f4;
+}
+
+.auth-message pre {
+    margin: 10px 0 0;
+}
+
+.auth-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 18px;
+}
+
 @media (max-width: 760px) {
     .app-header,
     .toolbar-band {

@@ -4,11 +4,10 @@ set -eu
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
-BASE_URL="${BASE_URL:-http://localhost:8888/OK-Core}"
+BASE_URL="${BASE_URL:-}"
 IDP_URL="${HCIMLAB_SSO_IDP_URL:-https://kshci-lab.net/software/hcimlab_auth}"
 CLIENT_ID="${HCIMLAB_SSO_CLIENT_ID:-your-ok-core-client-id}"
 CLIENT_SECRET="${HCIMLAB_SSO_CLIENT_SECRET:-your-ok-core-client-secret}"
-REDIRECT_URI="${BASE_URL%/}/auth/callback"
 SSO_LOCAL_PATH="$ROOT_DIR/php/sso_local.php"
 CERTS_DIR="$ROOT_DIR/certs"
 CA_BUNDLE_PATH="$CERTS_DIR/cacert.pem"
@@ -105,22 +104,43 @@ write_sso_local() {
     return
   fi
 
+  BASE_URL_PART="${BASE_URL%/}"
+
   cat > "$SSO_LOCAL_PATH" <<PHP
 <?php
+
+// Generated for local/LAN development.
+\$baseUrl = getenv('HCIMLAB_SSO_BASE_URL');
+if (\$baseUrl === false || \$baseUrl === '') {
+    \$baseUrl = '$BASE_URL_PART';
+}
+if (\$baseUrl === '') {
+    \$baseUrl = function_exists('hcimlab_sso_detect_base_url')
+        ? hcimlab_sso_detect_base_url()
+        : 'http://localhost:8888/OK-Core';
+}
+\$redirectUri = getenv('HCIMLAB_SSO_REDIRECT_URI');
+if (\$redirectUri === false || \$redirectUri === '') {
+    \$redirectUri = rtrim(\$baseUrl, '/') . '/auth/callback';
+}
 
 return array(
     'idp_url' => '$IDP_URL',
     'client_id' => '$CLIENT_ID',
     'client_secret' => '$CLIENT_SECRET',
-    'base_url' => '${BASE_URL%/}',
-    'redirect_uri' => '$REDIRECT_URI',
+    'base_url' => rtrim(\$baseUrl, '/'),
+    'redirect_uri' => \$redirectUri,
     'scope' => 'openid profile email lab',
 );
 
 PHP
 
   echo "Created php/sso_local.php."
-  echo "Register this redirect URI in HCIMLab SSO: $REDIRECT_URI"
+  if [ -n "$BASE_URL_PART" ]; then
+    echo "Register this redirect URI in HCIMLab SSO: $BASE_URL_PART/auth/callback"
+  else
+    echo "Register this redirect URI in HCIMLab SSO: <current-host>/OK-Core/auth/callback"
+  fi
 }
 
 PHP_BIN_RESOLVED="$(resolve_php_bin)"

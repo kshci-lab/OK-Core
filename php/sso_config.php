@@ -43,6 +43,7 @@ $config = array(
     'base_url' => rtrim($baseUrl, '/'),
     'redirect_uri' => hcimlab_sso_env_or_default('HCIMLAB_SSO_REDIRECT_URI', rtrim($baseUrl, '/') . '/auth/callback'),
     'scope' => hcimlab_sso_env_or_default('HCIMLAB_SSO_SCOPE', 'openid profile email lab'),
+    'token_auth_method' => hcimlab_sso_env_or_default('HCIMLAB_SSO_TOKEN_AUTH_METHOD', 'auto'),
     'ca_bundle' => hcimlab_sso_env_or_default('HCIMLAB_SSO_CA_BUNDLE', hcimlab_sso_default_ca_bundle()),
 );
 
