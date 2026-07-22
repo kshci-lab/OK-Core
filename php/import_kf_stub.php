@@ -150,7 +150,7 @@ function import_kf_get_or_create_system_user_id(mysqli $mysqli): int
         $ssoUserId = $sub;
         $ssoUsername = $sub;
         $email = 'import-bot@localhost';
-        $stmt->bind_param('issssssssss', $userId, $sub, $name, $password, $ssoUserId, $ssoUsername, $email, $displayName, $role, $claimsJson);
+        $stmt->bind_param('isssssssss', $userId, $sub, $name, $password, $ssoUserId, $ssoUsername, $email, $displayName, $role, $claimsJson);
         if (!$stmt->execute()) {
             $stmt->close();
             import_kf_respond(500, [
@@ -168,6 +168,121 @@ function import_kf_get_or_create_system_user_id(mysqli $mysqli): int
         'message' => 'Failed to prepare system user creation',
         'detail' => $mysqli->error,
     ]);
+}
+
+function import_kf_get_or_create_external_user_id(mysqli $mysqli, string $sourceSystem, string $sourceUserRef, string $sourceUserName): int
+{
+    $sourceUserName = trim($sourceUserName);
+    if ($sourceUserName === '') {
+        return import_kf_get_or_create_system_user_id($mysqli);
+    }
+
+    $safeSystem = $sourceSystem !== '' ? $sourceSystem : 'external';
+    $safeRef = $sourceUserRef !== '' ? $sourceUserRef : hash('sha256', $sourceUserName);
+    $sub = 'external:' . $safeSystem . ':' . $safeRef;
+
+    if ($stmt = $mysqli->prepare('SELECT user_id FROM users WHERE sso_sub = ? LIMIT 1')) {
+        $stmt->bind_param('s', $sub);
+        if ($stmt->execute()) {
+            $stmt->bind_result($userId);
+            if ($stmt->fetch()) {
+                $stmt->close();
+                if ($update = $mysqli->prepare('UPDATE users SET name = ?, display_name = ?, sso_username = ?, sso_updated_at = NOW() WHERE user_id = ?')) {
+                    $update->bind_param('sssi', $sourceUserName, $sourceUserName, $sourceUserName, $userId);
+                    $update->execute();
+                    $update->close();
+                }
+                return (int)$userId;
+            }
+        }
+        $stmt->close();
+    }
+
+    $password = 'SSO_LOGIN_DISABLED';
+    $role = 'external';
+    $claimsJson = json_encode([
+        'sub' => $sub,
+        'name' => $sourceUserName,
+        'source' => 'discussion-kf-import',
+        'source_system' => $safeSystem,
+        'source_user_ref' => $safeRef,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    $userId = 0;
+    for ($i = 0; $i < 30; $i++) {
+        $candidate = function_exists('random_int') ? random_int(10000, 2147483647) : mt_rand(10000, 2147483647);
+        if ($check = $mysqli->prepare('SELECT user_id FROM users WHERE user_id = ? LIMIT 1')) {
+            $check->bind_param('i', $candidate);
+            if ($check->execute()) {
+                $check->store_result();
+                if ($check->num_rows === 0) {
+                    $userId = $candidate;
+                    $check->close();
+                    break;
+                }
+            }
+            $check->close();
+        }
+    }
+
+    if ($userId <= 0) {
+        import_kf_respond(500, [
+            'success' => false,
+            'message' => 'Failed to generate external user_id',
+        ]);
+    }
+
+    if ($stmt = $mysqli->prepare(
+        'INSERT INTO users (user_id, sso_sub, name, password, sso_user_id, sso_username, email, display_name, role, is_active, sso_claims_json, sso_updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, NOW())'
+    )) {
+        $email = 'external-kf-import@localhost';
+        $stmt->bind_param('isssssssss', $userId, $sub, $sourceUserName, $password, $safeRef, $sourceUserName, $email, $sourceUserName, $role, $claimsJson);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            import_kf_respond(500, [
+                'success' => false,
+                'message' => 'Failed to create external user',
+                'detail' => $stmt ? $stmt->error : $mysqli->error,
+            ]);
+        }
+        $stmt->close();
+        return $userId;
+    }
+
+    import_kf_respond(500, [
+        'success' => false,
+        'message' => 'Failed to prepare external user creation',
+        'detail' => $mysqli->error,
+    ]);
+}
+
+function import_kf_base_url(): string
+{
+    $envBaseUrl = getenv('HCIMLAB_SSO_BASE_URL');
+    if ($envBaseUrl !== false && trim((string)$envBaseUrl) !== '') {
+        return rtrim((string)$envBaseUrl, '/');
+    }
+
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443);
+    $scheme = $https ? 'https' : 'http';
+    $host = isset($_SERVER['HTTP_HOST']) && $_SERVER['HTTP_HOST'] !== ''
+        ? (string)$_SERVER['HTTP_HOST']
+        : 'localhost:8888';
+    $script = isset($_SERVER['SCRIPT_NAME']) ? str_replace('\\', '/', (string)$_SERVER['SCRIPT_NAME']) : '/OK-Core/php/import_kf_stub.php';
+    $basePath = rtrim(dirname(dirname($script)), '/\\');
+
+    if ($basePath === '/' || $basePath === '\\' || $basePath === '.') {
+        $basePath = '';
+    }
+
+    return rtrim($scheme . '://' . $host . $basePath, '/');
+}
+
+function import_kf_ok_core_url(int $externalizedContentsId): string
+{
+    return import_kf_base_url() . '/index.php?externalized_contents_id=' . rawurlencode((string)$externalizedContentsId);
 }
 
 function import_kf_read_payload(): array
@@ -230,6 +345,7 @@ $sourceSystem = import_kf_trimmed_string($payload['source_system'] ?? '');
 $sourceType = strtolower(import_kf_trimmed_string($payload['source_type'] ?? ''));
 $sourceId = import_kf_trimmed_string($payload['source_id'] ?? '');
 $sourceUserRef = import_kf_trimmed_string($payload['source_user_ref'] ?? '');
+$sourceUserName = import_kf_trimmed_string($payload['source_user_name'] ?? '');
 $groupRaw = import_kf_trimmed_string($payload['group_id'] ?? '');
 $selectedContents = (string)($payload['selected_contents'] ?? '');
 $knowledgeFragmentContent = import_kf_trimmed_string($payload['knowledge_fragment_content'] ?? '');
@@ -279,6 +395,8 @@ if ($groupRaw !== '') {
 $sourceUserRefValue = ($sourceUserRef === '') ? null : $sourceUserRef;
 $rawPayloadValue = $rawJson;
 
+$importUserId = import_kf_get_or_create_external_user_id($mysqli, $sourceSystem, $sourceUserRef, $sourceUserName);
+
 $checkSql = 'SELECT externalized_contents_id
                FROM externalized_contents
               WHERE source_system = ?
@@ -306,17 +424,22 @@ if (!$checkStmt->execute()) {
 $checkStmt->bind_result($existingId);
 if ($checkStmt->fetch()) {
     $checkStmt->close();
+    if ($updateStmt = $mysqli->prepare('UPDATE externalized_contents SET user_id = ?, source_user_ref = ?, raw_payload = ?, updated_at = NOW() WHERE externalized_contents_id = ?')) {
+        $updateStmt->bind_param('issi', $importUserId, $sourceUserRefValue, $rawPayloadValue, $existingId);
+        $updateStmt->execute();
+        $updateStmt->close();
+    }
     import_kf_respond(200, [
         'success' => true,
         'message' => 'OK-Core received KF successfully',
         'externalizedContentsId' => (int)$existingId,
+        'okCoreUrl' => import_kf_ok_core_url((int)$existingId),
         'duplicate' => true,
         'receivedPayload' => $payload,
     ]);
 }
 $checkStmt->close();
 
-$systemUserId = import_kf_get_or_create_system_user_id($mysqli);
 $externalizedType = ($sourceType === 'SRL') ? 'SRL' : 'discussion';
 $thoughtExperienceNodeId = $sourceId;
 
@@ -339,7 +462,7 @@ $remarkedUtteranceId = null;
 $discussed = 'DONE';
 $stmt->bind_param(
     'iissssssssssssss',
-    $systemUserId,
+    $importUserId,
     $groupId,
     $remarkedUtteranceId,
     $thoughtExperienceNodeId,
@@ -374,5 +497,6 @@ import_kf_respond(200, [
     'success' => true,
     'message' => 'OK-Core received KF successfully',
     'externalizedContentsId' => $externalizedContentsId,
+    'okCoreUrl' => import_kf_ok_core_url($externalizedContentsId),
     'receivedPayload' => $payload,
 ]);
