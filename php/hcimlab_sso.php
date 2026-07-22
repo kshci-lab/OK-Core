@@ -104,11 +104,19 @@ function hcimlab_sso_is_safe_return_url($url)
         return false;
     }
 
+    $allowedHosts = array(
+        strtolower((string)$current['host']),
+        'localhost',
+        '127.0.0.1',
+        '::1',
+    );
+    $allowedHosts = array_values(array_unique(array_filter($allowedHosts, 'strlen')));
+
     $currentPort = isset($current['port']) ? (string)$current['port'] : '';
     $urlPort = isset($parts['port']) ? (string)$parts['port'] : '';
     $urlPath = isset($parts['path']) ? rtrim($parts['path'], '/') : '';
 
-    return strtolower($parts['host']) === strtolower($current['host'])
+    return in_array(strtolower($parts['host']), $allowedHosts, true)
         && $currentPort === $urlPort
         && strpos($urlPath, '/OK-Core') === 0;
 }

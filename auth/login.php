@@ -6,14 +6,20 @@ require_once __DIR__ . '/../php/hcimlab_sso.php';
 
 try {
     $config = hcimlab_sso_config();
+    $baseUrl = rtrim($config['base_url'], '/');
     $clientUrl = isset($_GET['clientUrl']) ? (string)$_GET['clientUrl'] : '';
+    $forceLogin = isset($_GET['force']) && (string)$_GET['force'] === '1';
     if ($clientUrl !== '' && hcimlab_sso_is_safe_return_url($clientUrl)) {
         $_SESSION['HCIMLAB_SSO_CLIENT_URL'] = rtrim($clientUrl, '/');
     }
 
     $returnUrl = hcimlab_sso_resolve_client_url();
-    if (!empty($_SESSION['USERID'])) {
-        header('Location: ' . rtrim($returnUrl, '/') . '/index.php');
+    if ($forceLogin) {
+        $_SESSION['HCIMLAB_SSO_FORCE_LOGIN'] = 1;
+    }
+
+    if (!$forceLogin && !empty($_SESSION['USERID'])) {
+        header('Location: ' . $baseUrl . '/index.php');
         exit;
     }
     $mode = isset($_GET['mode']) ? (string)$_GET['mode'] : '';
@@ -43,13 +49,14 @@ try {
         $_SESSION['HCIMLAB_SSO_REFRESH_TOKEN'] = null;
         $_SESSION['HCIMLAB_SSO_TOKEN_EXPIRES'] = time() + 86400;
         unset($_SESSION['SSO_ERROR']);
+        unset($_SESSION['HCIMLAB_SSO_FORCE_LOGIN']);
 
-        header('Location: ' . rtrim($returnUrl, '/') . '/index.php');
+        header('Location: ' . $baseUrl . '/index.php');
         exit;
     }
 
     if ($mode !== 'sso') {
-        header('Location: ' . rtrim($config['base_url'], '/') . '/login.php');
+        header('Location: ' . $baseUrl . '/login.php');
         exit;
     }
 

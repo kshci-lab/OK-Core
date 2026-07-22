@@ -1,9 +1,19 @@
 <?php
 require_once __DIR__ . '/php/session_bootstrap.php';
 hcimlab_start_session();
+require_once __DIR__ . '/php/hcimlab_sso.php';
+
+$baseUrl = rtrim(hcimlab_sso_config()['base_url'], '/');
+$canonicalPath = parse_url($baseUrl . '/index.php', PHP_URL_PATH);
+$requestPath = isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : '';
+if ($canonicalPath && $requestPath && $requestPath !== $canonicalPath) {
+    $queryString = isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] !== '' ? ('?' . $_SERVER['QUERY_STRING']) : '';
+    header('Location: ' . $baseUrl . '/index.php' . $queryString);
+    exit;
+}
 
 if (!isset($_SESSION['USERID'])) {
-    header('Location: login.php');
+    header('Location: ' . $baseUrl . '/login.php');
     exit;
 }
 

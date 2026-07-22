@@ -6,6 +6,7 @@ require_once __DIR__ . '/../php/hcimlab_sso.php';
 require_once __DIR__ . '/../php/connect_db.php';
 
 try {
+    $baseUrl = rtrim(hcimlab_sso_config()['base_url'], '/');
     if (isset($_GET['error'])) {
         $description = isset($_GET['error_description']) ? $_GET['error_description'] : $_GET['error'];
         throw new RuntimeException('SSO authorization failed: ' . $description);
@@ -70,12 +71,11 @@ try {
     $_SESSION['HCIMLAB_SSO_REFRESH_TOKEN'] = $token->getRefreshToken();
     $_SESSION['HCIMLAB_SSO_TOKEN_EXPIRES'] = $token->getExpires();
 
-    unset($_SESSION['HCIMLAB_SSO_STATE'], $_SESSION['HCIMLAB_SSO_PKCE'], $_SESSION['HCIMLAB_SSO_NONCE'], $_SESSION['SSO_ERROR']);
+    unset($_SESSION['HCIMLAB_SSO_STATE'], $_SESSION['HCIMLAB_SSO_PKCE'], $_SESSION['HCIMLAB_SSO_NONCE'], $_SESSION['SSO_ERROR'], $_SESSION['HCIMLAB_SSO_FORCE_LOGIN']);
 
-    $returnUrl = hcimlab_sso_resolve_client_url();
-    header('Location: ' . rtrim($returnUrl, '/') . '/index.php');
+    header('Location: ' . $baseUrl . '/index.php');
     exit;
 } catch (Throwable $e) {
-    unset($_SESSION['HCIMLAB_SSO_STATE'], $_SESSION['HCIMLAB_SSO_PKCE'], $_SESSION['HCIMLAB_SSO_NONCE']);
+    unset($_SESSION['HCIMLAB_SSO_STATE'], $_SESSION['HCIMLAB_SSO_PKCE'], $_SESSION['HCIMLAB_SSO_NONCE'], $_SESSION['HCIMLAB_SSO_FORCE_LOGIN']);
     hcimlab_sso_redirect_to_login($e->getMessage());
 }

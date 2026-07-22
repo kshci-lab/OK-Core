@@ -1,6 +1,16 @@
 <?php
 require_once __DIR__ . '/php/session_bootstrap.php';
 hcimlab_start_session();
+require_once __DIR__ . '/php/hcimlab_sso.php';
+
+$baseUrl = rtrim(hcimlab_sso_config()['base_url'], '/');
+$canonicalPath = parse_url($baseUrl . '/logout.php', PHP_URL_PATH);
+$requestPath = isset($_SERVER['REQUEST_URI']) ? parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) : '';
+if ($canonicalPath && $requestPath && $requestPath !== $canonicalPath) {
+    $queryString = isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] !== '' ? ('?' . $_SERVER['QUERY_STRING']) : '';
+    header('Location: ' . $baseUrl . '/logout.php' . $queryString);
+    exit;
+}
 
 $message = isset($_SESSION['USERID'])
     ? 'ログアウトしました。'
@@ -26,7 +36,7 @@ session_destroy();
     <main class="auth-box">
         <h1>OK-Core</h1>
         <p><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></p>
-        <a class="primary-link" href="login.php">ログインへ戻る</a>
+        <a class="primary-link" href="<?php echo htmlspecialchars($baseUrl . '/login.php', ENT_QUOTES, 'UTF-8'); ?>">ログインへ戻る</a>
     </main>
 </body>
 </html>
