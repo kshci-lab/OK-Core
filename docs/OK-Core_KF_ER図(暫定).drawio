@@ -1,0 +1,315 @@
+<mxfile host="65bd71144e">
+    <diagram id="ok-core-kf-final" name="OK-Core KF ER図">
+        <mxGraphModel dx="3503" dy="3572" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="2520" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="boundary_ok_core" value="&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;b style=&quot;color: rgb(63, 63, 63); scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); font-size: 16px;&quot;&gt;　　KF&lt;/b&gt;&lt;/span&gt;&lt;b style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); font-size: 16px; color: rgb(63, 63, 63);&quot;&gt;関連&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingTop=8;spacingRight=10;strokeColor=#E6FFCC;strokeWidth=7;fillColor=none;fontSize=18;fontColor=#4f81bd;pointerEvents=0;" parent="1" vertex="1">
+                    <mxGeometry x="10" y="10" width="1570" height="850" as="geometry"/>
+                </mxCell>
+                <mxCell id="boundary_forest" value="&lt;b&gt;forest-platform DB&lt;/b&gt;" style="swimlane;horizontal=1;startSize=48;rounded=0;whiteSpace=wrap;html=1;collapsible=0;container=0;align=left;spacingLeft=10;strokeColor=#99CCFF;strokeWidth=5;fillColor=#dae8fc;fillOpacity=20;fontSize=16;fontColor=#24486e;swimlaneFillColor=default;" parent="1" vertex="1">
+                    <mxGeometry x="-20" y="1030" width="760" height="650" as="geometry"/>
+                </mxCell>
+                <mxCell id="boundary_discussion" value="&lt;b&gt;議論会議システム DB&lt;/b&gt;" style="swimlane;horizontal=1;startSize=48;rounded=0;whiteSpace=wrap;html=1;collapsible=0;container=0;align=left;spacingLeft=10;strokeColor=#FFE6CC;strokeWidth=5;fillColor=#FFCC99;fillOpacity=20;fontSize=16;fontColor=#7a4b00;" parent="1" vertex="1">
+                    <mxGeometry x="830" y="1030" width="770" height="500" as="geometry"/>
+                </mxCell>
+                <mxCell id="discussion_utterances" value="&lt;div style=&quot;background:#777777;color:white;padding:6px 8px;font-weight:bold;&quot;&gt;discussion_utterances（既存）&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.35;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; utterance_id&lt;/b&gt;&lt;br&gt;discussion_id&lt;br&gt;content / utter_time 等&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#777777;fillColor=#ffffff;fontSize=10;" parent="boundary_discussion" vertex="1">
+                    <mxGeometry x="66" y="350" width="310" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="section_source" value="外部システム識別・参照" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=#d9e8fb;fontStyle=1;fontSize=13;spacingLeft=8;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="90" width="300" height="32" as="geometry"/>
+                </mxCell>
+                <mxCell id="section_protocol" value="KFプロトコル・stage定義" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=#d5e8d4;fontStyle=1;fontSize=13;spacingLeft=8;" parent="1" vertex="1">
+                    <mxGeometry x="390" y="90" width="320" height="32" as="geometry"/>
+                </mxCell>
+                <mxCell id="section_snapshot" value="KFスナップショット" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=#e1f0d5;fontStyle=1;fontSize=13;spacingLeft=8;" parent="1" vertex="1">
+                    <mxGeometry x="770" y="90" width="400" height="32" as="geometry"/>
+                </mxCell>
+                <mxCell id="section_share" value="グループ共有・既存テーブル" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=#e1d5e7;fontStyle=1;fontSize=13;spacingLeft=8;" parent="1" vertex="1">
+                    <mxGeometry x="1220" y="90" width="330" height="32" as="geometry"/>
+                </mxCell>
+                <mxCell id="source_systems" value="&lt;div style=&quot;background:#4f81bd;color:white;padding:7px 8px;font-weight:bold;&quot;&gt;kf_source_systems&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.45;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; source_system_id : SMALLINT UNSIGNED&lt;/b&gt;&lt;br&gt;&lt;u&gt;UQ&lt;/u&gt; system_code : VARCHAR(64)&lt;br&gt;system_name : VARCHAR(191)&lt;br&gt;base_url : VARCHAR(1024)&lt;br&gt;is_active : TINYINT(1)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#B3B3B3;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="140" width="300" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="protocols" value="&lt;div style=&quot;background: rgb(84, 140, 118); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;kf_protocol_definitions&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.45;&quot;&gt;&lt;b&gt;&lt;font style=&quot;color: rgb(0, 153, 77);&quot;&gt;&lt;u&gt;PK&lt;/u&gt; protocol_definition_id : SMALLINT UNSIGNED&lt;/font&gt;&lt;/b&gt;&lt;br&gt;protocol_code : VARCHAR(64)&lt;br&gt;protocol_version : VARCHAR(20)&lt;br&gt;protocol_name : VARCHAR(191)&lt;br&gt;&lt;u&gt;UQ&lt;/u&gt; (protocol_code, protocol_version)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#548c76;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="390" y="140" width="320" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="stage_definitions" value="&lt;div style=&quot;background: rgb(84, 140, 118); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;kf_stage_definitions&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.45;&quot;&gt;&lt;font&gt;&lt;b&gt;&lt;u style=&quot;color: light-dark(rgb(0, 153, 77), rgb(40, 171, 106));&quot;&gt;PK&lt;/u&gt; &lt;font style=&quot;color: rgb(0, 153, 77);&quot;&gt;stage_definition_id : SMALLINT UNSIGNED&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;u style=&quot;color: light-dark(rgb(0, 153, 77), rgb(40, 171, 106));&quot;&gt;FK&lt;/u&gt;&lt;font style=&quot;color: rgb(0, 153, 77);&quot;&gt; protocol_definition_id : SMALLINT UNSIGNED&lt;/font&gt;&lt;/font&gt;&lt;br&gt;stage_code : VARCHAR(32)&lt;br&gt;stage_name : VARCHAR(191)&lt;br&gt;display_order : SMALLINT UNSIGNED&lt;br&gt;&lt;u&gt;UQ&lt;/u&gt; (protocol_definition_id, stage_code)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#548c76;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="390" y="350" width="320" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="slot_definitions" value="&lt;div style=&quot;background: rgb(84, 140, 118); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;kf_stage_slot_definitions&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.45;&quot;&gt;&lt;font&gt;&lt;b style=&quot;&quot;&gt;&lt;u style=&quot;color: light-dark(rgb(0, 153, 77), rgb(40, 171, 106));&quot;&gt;PK&lt;/u&gt; &lt;font style=&quot;color: rgb(0, 153, 77);&quot;&gt;stage_slot_definition_id : SMALLINT UNSIGNED&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;u style=&quot;color: light-dark(rgb(0, 153, 77), rgb(40, 171, 106));&quot;&gt;FK&lt;/u&gt;&lt;font style=&quot;color: rgb(0, 153, 77);&quot;&gt; stage_definition_id : SMALLINT UNSIGNED&lt;/font&gt;&lt;/font&gt;&lt;br&gt;slot_code : VARCHAR(64)&lt;br&gt;slot_name : VARCHAR(191)&lt;br&gt;display_order : SMALLINT UNSIGNED&lt;br&gt;&lt;u&gt;UQ&lt;/u&gt; (stage_definition_id, slot_code)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#548c76;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="390" y="600" width="320" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="knowledge_fragments" value="&lt;div style=&quot;background: rgb(79, 138, 91); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;knowledge_fragments&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.4;&quot;&gt;&lt;b&gt;&lt;font style=&quot;color: rgb(51, 102, 0);&quot;&gt;&lt;u style=&quot;&quot;&gt;PK&lt;/u&gt; knowledge_fragment_id : BIGINT UNSIGNED&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;u&gt;F&lt;font style=&quot;color: rgb(0, 76, 153);&quot;&gt;K&lt;/font&gt;&lt;/u&gt;&lt;font style=&quot;color: rgb(0, 76, 153);&quot;&gt; source_system_id : SMALLINT UNSIGNED&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;color: rgb(0, 153, 77);&quot;&gt;&lt;u style=&quot;&quot;&gt;FK&lt;/u&gt; protocol_definition_id : SMALLINT UNSIGNED&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;color: rgb(0, 76, 153);&quot;&gt;external_kf_id : VARCHAR(191)&lt;/font&gt;&lt;br&gt;&lt;b&gt;&lt;font style=&quot;color: rgb(153, 76, 0);&quot;&gt;external_context_package_id : VARCHAR(191)&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;color: rgb(153, 153, 153);&quot;&gt;&lt;u&gt;FK&lt;/u&gt; expresser_sso_sub : VARCHAR(255)&lt;/font&gt;&lt;br&gt;activity_type_code : VARCHAR(64)&lt;br&gt;external_activity_id : VARCHAR(191)&lt;br&gt;summary : TEXT&lt;br&gt;context_package_snapshot_json : JSON&lt;br&gt;source_revision : BIGINT UNSIGNED&lt;br&gt;source_updated_at : DATETIME(3)&lt;br&gt;synced_at : DATETIME(3)&lt;br&gt;source_deleted_at : DATETIME(3) NULL&lt;br&gt;&lt;u&gt;UQ&lt;/u&gt; (source_system_id, external_kf_id)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#4f8a5b;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="770" y="140" width="400" height="280" as="geometry"/>
+                </mxCell>
+                <mxCell id="stage_contents" value="&lt;div style=&quot;background: rgb(79, 138, 91); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;knowledge_fragment_stage_contents&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.45;&quot;&gt;&lt;b&gt;&lt;font style=&quot;color: rgb(51, 102, 0);&quot;&gt;&lt;u&gt;PK, FK&lt;/u&gt; knowledge_fragment_id : BIGINT UNSIGNED&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;b&gt;&lt;font style=&quot;color: rgb(0, 102, 0);&quot;&gt;&lt;u&gt;PK, FK&lt;/u&gt; &lt;/font&gt;&lt;font style=&quot;color: rgb(0, 153, 77);&quot;&gt;stage_definition_id : SMALLINT UNSIGNED&lt;/font&gt;&lt;/b&gt;&lt;br&gt;rendered_content : LONGTEXT&lt;br&gt;&lt;u&gt;UQ&lt;/u&gt; (knowledge_fragment_id, stage_definition_id)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#4f8a5b;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="770" y="480" width="400" height="145" as="geometry"/>
+                </mxCell>
+                <mxCell id="slot_values" value="&lt;div style=&quot;background: rgb(79, 138, 91); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;knowledge_fragment_stage_slot_values&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.45;&quot;&gt;&lt;b&gt;&lt;font style=&quot;color: rgb(0, 102, 0);&quot;&gt;&lt;u&gt;PK, FK&lt;/u&gt; knowledge_fragment_id : BIGINT UNSIGNED&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;font&gt;&lt;b style=&quot;&quot;&gt;&lt;u style=&quot;color: light-dark(rgb(51, 102, 0), rgb(136, 180, 92));&quot;&gt;PK, FK&lt;/u&gt;&lt;font style=&quot;color: rgb(0, 153, 77);&quot;&gt; stage_definition_id : SMALLINT UNSIGNED&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;b style=&quot;color: light-dark(rgb(51, 102, 0), rgb(136, 180, 92));&quot;&gt;&lt;u style=&quot;&quot;&gt;PK, FK&lt;/u&gt; &lt;/b&gt;&lt;b style=&quot;&quot;&gt;&lt;font style=&quot;color: light-dark(rgb(0, 153, 77), rgb(136, 180, 92));&quot;&gt;stage_slot_definition_id : SMALLINT UNSIGNED&lt;/font&gt;&lt;/b&gt;&lt;/font&gt;&lt;br&gt;slot_value : LONGTEXT&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#4f8a5b;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="770" y="680" width="400" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="group_shares" value="&lt;div style=&quot;background: rgb(141, 90, 166); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;kf_group_shares&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.45;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; kf_group_share_id : BIGINT UNSIGNED&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;color: rgb(51, 102, 0);&quot;&gt;&lt;u&gt;FK&lt;/u&gt; knowledge_fragment_id : BIGINT UNSIGNED&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;color: rgb(153, 153, 153);&quot;&gt;&lt;u&gt;FK&lt;/u&gt; knowledge_group_id : INT&lt;br&gt;&lt;u&gt;FK&lt;/u&gt; shared_by_user_id : INT&lt;/font&gt;&lt;br&gt;discussion_status : ENUM(YET, UNDERWAY, DONE)&lt;br&gt;shared_at : DATETIME&lt;br&gt;deleted_at : DATETIME NULL&lt;br&gt;&lt;u&gt;UQ&lt;/u&gt; (knowledge_fragment_id, knowledge_group_id)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#8d5aa6;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="1220" y="140" width="330" height="205" as="geometry"/>
+                </mxCell>
+                <mxCell id="users" value="&lt;div style=&quot;background:#777777;color:white;padding:7px 8px;font-weight:bold;&quot;&gt;users（既存）&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.45;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; user_id : INT&lt;/b&gt;&lt;br&gt;&lt;u&gt;UQ&lt;/u&gt; sso_sub : VARCHAR(255)&lt;br&gt;主要参照列のみ表示&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#777777;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="1220" y="430" width="330" height="115" as="geometry"/>
+                </mxCell>
+                <mxCell id="groups" value="&lt;div style=&quot;background:#777777;color:white;padding:7px 8px;font-weight:bold;&quot;&gt;knowledge_groups（既存）&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.45;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; group_id : INT&lt;/b&gt;&lt;br&gt;主要参照列のみ表示&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#777777;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="1220" y="620" width="330" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="forest_kf" value="&lt;div style=&quot;background: rgb(79, 129, 189); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;experience_knowledges&lt;br&gt;（KFの正本・既存テーブルを拡張）&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.4;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; &lt;font style=&quot;color: rgb(0, 76, 153);&quot;&gt;experience_knowledge_id : INT&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;u&gt;FK&lt;/u&gt; &lt;font style=&quot;color: rgb(0, 76, 153);&quot;&gt;context_package_id : BIGINT UNSIGNED&lt;/font&gt;&lt;br&gt;&lt;u&gt;FK&lt;/u&gt; &lt;font style=&quot;color: rgb(153, 153, 153);&quot;&gt;user_id : INT&lt;/font&gt;&lt;br&gt;knowledge_fragment_content : TEXT&lt;br&gt;stage_payload_json : JSON（stages / slots）&lt;br&gt;source_revision : BIGINT UNSIGNED&lt;br&gt;created_at / updated_at : DATETIME(3)&lt;br&gt;deleted : TINYINT(1)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#4f81bd;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="10" y="1100" width="310" height="245" as="geometry"/>
+                </mxCell>
+                <mxCell id="forest_context_packages" value="&lt;div style=&quot;background: rgb(79, 129, 189); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;kf_context_packages&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.4;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; &lt;font style=&quot;color: rgb(0, 76, 153);&quot;&gt;context_package_id : BIGINT UNSIGNED&lt;/font&gt;&lt;/b&gt;&lt;br&gt;activity_type_code : VARCHAR(64)&lt;br&gt;external_activity_id : VARCHAR(191)&lt;br&gt;created_at : DATETIME(3)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#4f81bd;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="370" y="1100" width="330" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="forest_context_items" value="&lt;div style=&quot;background: rgb(79, 129, 189); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;kf_context_package_items&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.4;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; &lt;font style=&quot;color: rgb(0, 76, 153);&quot;&gt;context_package_item_id : BIGINT UNSIGNED&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;u&gt;FK&lt;/u&gt; &lt;font style=&quot;color: rgb(0, 76, 153);&quot;&gt;context_package_id : BIGINT UNSIGNED&lt;/font&gt;&lt;br&gt;entity_type_code : VARCHAR(64)&lt;br&gt;entity_id : VARCHAR(191)&lt;br&gt;display_order : INT&lt;br&gt;snapshot_json : JSON&lt;br&gt;&lt;u&gt;UQ&lt;/u&gt; (context_package_id, entity_type_code, entity_id)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#4f81bd;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="370" y="1300" width="330" height="190" as="geometry"/>
+                </mxCell>
+                <mxCell id="forest_node_versions" value="&lt;div style=&quot;background:#777777;color:white;padding:6px 8px;font-weight:bold;&quot;&gt;node_versions（既存）&lt;/div&gt;&lt;div style=&quot;padding:8px;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; node_version_id&lt;/b&gt;&lt;br&gt;content / appeared_at 等&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#777777;fillColor=#ffffff;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="10" y="1550" width="210" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="forest_process_nodes" value="&lt;div style=&quot;background:#777777;color:white;padding:6px 8px;font-weight:bold;&quot;&gt;process_nodes（既存）&lt;/div&gt;&lt;div style=&quot;padding:8px;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; process_node_id&lt;/b&gt;&lt;br&gt;content / process_node_type 等&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#777777;fillColor=#ffffff;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="240" y="1550" width="210" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="forest_triggers" value="&lt;div style=&quot;background:#777777;color:white;padding:6px 8px;font-weight:bold;&quot;&gt;triggers（既存）&lt;/div&gt;&lt;div style=&quot;padding:8px;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; trigger_id&lt;/b&gt;&lt;br&gt;activity_id / content 等&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#777777;fillColor=#ffffff;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="470" y="1550" width="210" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="discussion_kf" value="&lt;div style=&quot;background: rgb(197, 137, 47); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;externalized_contents&lt;br&gt;（KFの正本・既存テーブルを拡張）&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.4;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt;&lt;font&gt; &lt;font style=&quot;color: rgb(109, 81, 0);&quot;&gt;externalized_contents_id : INT&lt;/font&gt;&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;u&gt;FK&lt;/u&gt; &lt;font style=&quot;color: rgb(109, 81, 0);&quot;&gt;context_package_id : BIGINT UNSIGNED&lt;/font&gt;&lt;br&gt;&lt;u&gt;FK&lt;/u&gt; &lt;font style=&quot;color: rgb(153, 153, 153);&quot;&gt;user_id : INT&lt;/font&gt;&lt;br&gt;knowledge_fragment_content : TEXT&lt;br&gt;stage_payload_json : JSON（stages / slots）&lt;br&gt;source_revision : BIGINT UNSIGNED&lt;br&gt;created_at / updated_at : DATETIME(3)&lt;br&gt;deleted : TINYINT(1)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#c5892f;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="866" y="1100" width="310" height="245" as="geometry"/>
+                </mxCell>
+                <mxCell id="discussion_context_packages" value="&lt;div style=&quot;background: rgb(197, 137, 47); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;kf_context_packages&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.4;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; &lt;font style=&quot;color: rgb(109, 81, 0);&quot;&gt;context_package_id : BIGINT UNSIGNED&lt;/font&gt;&lt;/b&gt;&lt;br&gt;activity_type_code : VARCHAR(64)&lt;br&gt;external_activity_id : VARCHAR(191)&lt;br&gt;created_at : DATETIME(3)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#c5892f;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="1226" y="1100" width="330" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="discussion_context_items" value="&lt;div style=&quot;background: rgb(197, 137, 47); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;kf_context_package_items&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.4;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; &lt;font style=&quot;color: rgb(109, 81, 0);&quot;&gt;context_package_item_id : BIGINT UNSIGNED&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;u&gt;FK&lt;/u&gt; &lt;font style=&quot;color: rgb(109, 81, 0);&quot;&gt;context_package_id : BIGINT UNSIGNED&lt;/font&gt;&lt;br&gt;entity_type_code : VARCHAR(64)&lt;br&gt;entity_id : VARCHAR(191)&lt;br&gt;display_order : INT&lt;br&gt;snapshot_json : JSON&lt;br&gt;&lt;u&gt;UQ&lt;/u&gt; (context_package_id, entity_type_code, entity_id)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#c5892f;fillColor=#ffffff;fontSize=11;overflow=fill;" parent="1" vertex="1">
+                    <mxGeometry x="1226" y="1300" width="330" height="190" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_source_kf" value="1 : N&lt;br&gt;source_system_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#59636e;fontSize=10;labelBackgroundColor=#CCE5FF;" parent="1" source="source_systems" target="knowledge_fragments" edge="1">
+                    <mxGeometry x="-0.3667" y="-10" relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="190" y="300"/>
+                        </Array>
+                        <mxPoint x="1" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_protocol_stage" value="1 : N&lt;br&gt;protocol_definition_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#59636e;fontSize=10;labelBackgroundColor=#CCFFE6;" parent="1" source="protocols" target="stage_definitions" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_protocol_kf" value="1 : N&lt;br&gt;protocol_definition_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#59636e;fontSize=10;labelBackgroundColor=#CCFFE6;" parent="1" source="protocols" target="knowledge_fragments" edge="1">
+                    <mxGeometry x="-1" y="-32" relative="1" as="geometry">
+                        <mxPoint x="-10" y="-2" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_stage_slot" value="1 : N&lt;br&gt;stage_definition_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#59636e;fontSize=10;labelBackgroundColor=#CCFFE6;" parent="1" source="stage_definitions" target="slot_definitions" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_kf_stage_content" value="1 : N&lt;br&gt;knowledge_fragment_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#59636e;fontSize=10;labelBackgroundColor=#E6FFCC;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="knowledge_fragments" target="stage_contents" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_stage_content" value="1 : N&lt;br&gt;stage_definition_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#59636e;fontSize=10;labelBackgroundColor=#CCFFE6;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="stage_definitions" target="stage_contents" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_content_slot_value" value="1 : N&lt;br&gt;(knowledge_fragment_id, stage_definition_id)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#59636e;fontSize=10;labelBackgroundColor=#E6FFCC;" parent="1" source="stage_contents" target="slot_values" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_slot_value" value="1 : N&lt;br&gt;stage_slot_definition_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#59636e;fontSize=10;labelBackgroundColor=#CCFFE6;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="slot_definitions" target="slot_values" edge="1">
+                    <mxGeometry x="-1" y="-40" relative="1" as="geometry">
+                        <mxPoint x="-20" y="-5" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_kf_share" value="1 : N&lt;br&gt;knowledge_fragment_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#59636e;fontSize=10;shadow=0;labelBackgroundColor=#E6FFCC;" parent="1" source="knowledge_fragments" target="group_shares" edge="1">
+                    <mxGeometry x="-1" y="28" relative="1" as="geometry">
+                        <mxPoint x="-20" y="8" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_user_kf" value="1 : N&lt;br&gt;expresser_sso_sub" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#777777;fontSize=10;dashed=1;dashPattern=8 4;labelBackgroundColor=#E6E6E6;entryX=0.873;entryY=0.985;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="users" target="knowledge_fragments" edge="1">
+                    <mxGeometry x="0.5589" relative="1" as="geometry">
+                        <mxPoint x="1170" y="320" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="1119" y="470"/>
+                        </Array>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_user_share" value="1 : N&lt;br&gt;shared_by_user_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#777777;fontSize=10;dashed=1;dashPattern=8 4;labelBackgroundColor=#E6E6E6;" parent="1" source="users" target="group_shares" edge="1">
+                    <mxGeometry x="0.4118" y="-5" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_group_share" value="1 : N&lt;br&gt;knowledge_group_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#777777;fontSize=10;dashed=1;dashPattern=8 4;entryX=0.666;entryY=0.998;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;labelBackgroundColor=#E6E6E6;" parent="1" source="groups" target="group_shares" edge="1">
+                    <mxGeometry x="0.5947" y="-30" relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1385" y="580"/>
+                            <mxPoint x="1560" y="580"/>
+                            <mxPoint x="1560" y="400"/>
+                            <mxPoint x="1440" y="400"/>
+                            <mxPoint x="1440" y="345"/>
+                        </Array>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_forest_package_kf" value="1 : N&lt;br&gt;context_package_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#4f81bd;fontSize=10;labelBackgroundColor=#CCE5FF;" parent="1" source="forest_context_packages" target="forest_kf" edge="1">
+                    <mxGeometry x="1" y="-23" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_forest_package_items" value="1 : N&lt;br&gt;context_package_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#4f81bd;fontSize=10;labelBackgroundColor=#CCE5FF;" parent="1" source="forest_context_packages" target="forest_context_items" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_forest_node_item" value="node_version + entity_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#777777;fontSize=9;dashed=1;dashPattern=6 4;exitX=0.528;exitY=-0.002;exitDx=0;exitDy=0;exitPerimeter=0;labelBackgroundColor=#E6E6E6;" parent="1" source="forest_node_versions" target="forest_context_items" edge="1">
+                    <mxGeometry x="-0.4983" y="10" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_forest_process_item" value="process_node + entity_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#777777;fontSize=9;dashed=1;dashPattern=6 4;labelBackgroundColor=#E6E6E6;" parent="1" source="forest_process_nodes" target="forest_context_items" edge="1">
+                    <mxGeometry x="-0.0002" y="10" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_forest_trigger_item" value="trigger + entity_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#777777;fontSize=9;dashed=1;dashPattern=6 4;labelBackgroundColor=#E6E6E6;" parent="1" source="forest_triggers" target="forest_context_items" edge="1">
+                    <mxGeometry x="-0.4004" y="-27" relative="1" as="geometry">
+                        <mxPoint x="25" y="17" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_discussion_package_kf" value="1 : N&lt;br&gt;context_package_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#c5892f;fontSize=10;labelBackgroundColor=#E6C35C;" parent="1" source="discussion_context_packages" target="discussion_kf" edge="1">
+                    <mxGeometry x="1" y="-22" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_discussion_package_items" value="1 : N&lt;br&gt;context_package_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#c5892f;fontSize=10;" parent="1" source="discussion_context_packages" target="discussion_context_items" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_discussion_utterance_item" value="discussion_utterance + entity_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#777777;fontSize=9;dashed=1;dashPattern=6 4;labelBackgroundColor=#E6E6E6;" parent="1" source="discussion_utterances" target="discussion_context_items" edge="1">
+                    <mxGeometry x="-1" y="25" relative="1" as="geometry">
+                        <mxPoint x="-20" y="10" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_sync_discussion" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#4F81BD;strokeWidth=2;fontSize=10;dashed=1;dashPattern=8 4;entryX=0.003;entryY=0.641;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" target="knowledge_fragments" edge="1">
+                    <mxGeometry x="-0.1814" y="-14" relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="990" y="970"/>
+                            <mxPoint x="745" y="970"/>
+                            <mxPoint x="745" y="319"/>
+                        </Array>
+                        <mxPoint x="990" y="1100" as="sourcePoint"/>
+                        <mxPoint x="765.3999999999996" y="314.03999999999985" as="targetPoint"/>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_context_ref_discussion" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#D6B656;strokeWidth=2;fontSize=10;dashed=1;dashPattern=6 4;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" parent="1" source="discussion_context_packages" edge="1">
+                    <mxGeometry x="-0.6884" y="-60" relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1355" y="1004"/>
+                            <mxPoint x="760" y="1004"/>
+                            <mxPoint x="760" y="340"/>
+                        </Array>
+                        <mxPoint x="1355" y="1114" as="sourcePoint"/>
+                        <mxPoint x="770" y="340" as="targetPoint"/>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="5" value="Text" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="e_context_ref_discussion">
+                    <mxGeometry x="-0.0579" y="-8" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_context_ref_forest" value="クロスDB参照&lt;br&gt;external_context_package_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=open;endFill=0;strokeColor=#d6b656;strokeWidth=2;fontSize=10;dashed=1;dashPattern=6 4;labelBackgroundColor=#E6C35C;" parent="1" source="forest_context_packages" target="knowledge_fragments" edge="1">
+                    <mxGeometry x="-0.3822" relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="575" y="1005"/>
+                            <mxPoint x="760" y="1005"/>
+                            <mxPoint x="760" y="340"/>
+                        </Array>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_sync_forest" value="同期API&lt;br&gt;external_kf_id / source_revision / stage_payload" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#4F81BD;strokeWidth=2;fontSize=10;dashed=1;dashPattern=8 4;labelBackgroundColor=#CCE5FF;" parent="1" source="forest_kf" target="knowledge_fragments" edge="1">
+                    <mxGeometry x="-0.0078" relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="380" y="1150"/>
+                            <mxPoint x="380" y="970"/>
+                            <mxPoint x="745" y="970"/>
+                            <mxPoint x="745" y="320"/>
+                        </Array>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="organizational_knowledge_categories" value="&lt;div style=&quot;background:#6b7280;color:white;padding:7px 8px;font-weight:bold;&quot;&gt;organizational_knowledge_categories&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.4;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; category_id : BIGINT UNSIGNED&lt;/b&gt;&lt;br&gt;&lt;u&gt;FK&lt;/u&gt; knowledge_group_id : INT&lt;br&gt;category_name : VARCHAR(191)&lt;br&gt;display_order : SMALLINT UNSIGNED&lt;br&gt;created_at : DATETIME(3)&lt;br&gt;updated_at : DATETIME(3)&lt;br&gt;&lt;u&gt;UQ&lt;/u&gt; (knowledge_group_id, category_name)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#6b7280;fillColor=#ffffff;fontSize=11;overflow=fill;" vertex="1" parent="1">
+                    <mxGeometry x="1684" y="90" width="330" height="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="organizational_knowledges" value="&lt;div style=&quot;background: rgb(79, 138, 91); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;organizational_knowledges&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.4;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt;&lt;font style=&quot;color: rgb(51, 102, 0);&quot;&gt; organizational_knowledge_id : BIGINT UNSIGNED&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;u&gt;FK&lt;/u&gt;&lt;font style=&quot;color: rgb(128, 128, 128);&quot;&gt; category_id : BIGINT UNSIGNED&lt;/font&gt;&lt;br&gt;&lt;u&gt;FK&lt;/u&gt; &lt;font style=&quot;color: rgb(128, 128, 128);&quot;&gt;created_by_user_id : INT&lt;br&gt;&lt;u&gt;FK&lt;/u&gt; updated_by_user_id : INT NULL&lt;/font&gt;&lt;br&gt;summary : VARCHAR(255)&lt;br&gt;tacto_when : TEXT NULL&lt;br&gt;tacto_what : TEXT NULL&lt;br&gt;tacto_why : TEXT NULL&lt;br&gt;organizational_basis : TEXT NULL&lt;br&gt;comment : TEXT NULL&lt;br&gt;created_at : DATETIME(3)&lt;br&gt;updated_at : DATETIME(3)&lt;br&gt;deleted_at : DATETIME(3) NULL&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#4f8a5b;fillColor=#ffffff;fontSize=11;overflow=fill;" vertex="1" parent="1">
+                    <mxGeometry x="2064" y="90" width="430" height="290" as="geometry"/>
+                </mxCell>
+                <mxCell id="organizational_knowledge_fragment_links" value="&lt;div style=&quot;background: rgb(79, 129, 189); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;organizational_knowledge_fragment_links&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.4;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; fragment_link_id : BIGINT UNSIGNED&lt;/b&gt;&lt;br&gt;&lt;u&gt;FK&lt;/u&gt; &lt;font style=&quot;color: rgb(51, 102, 0);&quot;&gt;organizational_knowledge_id : BIGINT UNSIGNED&lt;/font&gt;&lt;br&gt;&lt;u&gt;FK&lt;/u&gt; &lt;font style=&quot;color: rgb(51, 102, 0);&quot;&gt;knowledge_fragment_id : BIGINT UNSIGNED&lt;/font&gt;&lt;br&gt;display_order : SMALLINT UNSIGNED&lt;br&gt;linked_at : DATETIME(3)&lt;br&gt;&lt;u&gt;UQ&lt;/u&gt; (organizational_knowledge_id, knowledge_fragment_id)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#4f81bd;fillColor=#ffffff;fontSize=11;overflow=fill;" vertex="1" parent="1">
+                    <mxGeometry x="2129" y="460" width="300" height="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="organizational_knowledge_discussion_posts" value="&lt;div style=&quot;background: rgb(197, 137, 47); color: white; padding: 7px 8px; font-weight: bold;&quot;&gt;organizational_knowledge_discussion_posts&lt;/div&gt;&lt;div style=&quot;padding:8px;line-height:1.4;&quot;&gt;&lt;b&gt;&lt;u&gt;PK&lt;/u&gt; &lt;font style=&quot;color: rgb(109, 81, 0);&quot;&gt;discussion_post_id : BIGINT UNSIGNED&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&lt;u&gt;FK&lt;/u&gt;&lt;font style=&quot;color: rgb(51, 102, 0);&quot;&gt; organizational_knowledge_id : BIGINT UNSIGNED&lt;/font&gt;&lt;br&gt;&lt;u&gt;FK&lt;/u&gt; &lt;font style=&quot;color: rgb(128, 128, 128);&quot;&gt;user_id : INT&lt;/font&gt;&lt;br&gt;content : TEXT&lt;br&gt;posted_at : DATETIME(3)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=0;strokeColor=#c5892f;fillColor=#ffffff;fontSize=11;overflow=fill;" vertex="1" parent="1">
+                    <mxGeometry x="1704" y="465" width="290" height="175" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_org_category_knowledge" value="1 : N&lt;br&gt;category_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#59636e;fontSize=10;labelBackgroundColor=#CCCCCC;" edge="1" parent="1" source="organizational_knowledge_categories" target="organizational_knowledges">
+                    <mxGeometry x="-1" y="30" relative="1" as="geometry">
+                        <mxPoint x="-4" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_org_knowledge_fragment_link" value="1 : N&lt;br&gt;organizational_knowledge_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#336600;fontSize=10;labelBackgroundColor=#E6FFCC;" edge="1" parent="1" source="organizational_knowledges" target="organizational_knowledge_fragment_links">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="2519" y="250"/>
+                            <mxPoint x="2519" y="410"/>
+                            <mxPoint x="2310" y="410"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_org_knowledge_discussion" value="1 : N&lt;br&gt;organizational_knowledge_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#336600;fontSize=10;labelBackgroundColor=#E6FFCC;" edge="1" parent="1" source="organizational_knowledges" target="organizational_knowledge_discussion_posts">
+                    <mxGeometry x="0.3784" y="1" relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1849" y="310"/>
+                        </Array>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_kf_org_fragment_link" value="1 : N&lt;br&gt;knowledge_fragment_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#4f81bd;strokeWidth=2;fontSize=10;dashed=1;dashPattern=8 4;labelBackgroundColor=#E6FFCC;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="knowledge_fragments" target="organizational_knowledge_fragment_links">
+                    <mxGeometry x="0.6911" relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="2279" y="410"/>
+                        </Array>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_user_org_knowledge" value="1 : N&lt;br&gt;created_by / updated_by" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#777777;fontSize=10;dashed=1;dashPattern=8 4;labelBackgroundColor=#E6E6E6;" edge="1" parent="1" source="users" target="organizational_knowledges">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="2250" y="450"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="6" value="&lt;b&gt;OK-Core DB&lt;/b&gt;" style="swimlane;horizontal=1;startSize=52;rounded=0;whiteSpace=wrap;html=1;collapsible=0;container=0;align=left;spacingLeft=10;strokeColor=#5f7f63;strokeWidth=3;fillColor=#e8f2e9;fillOpacity=25;fontSize=16;fontColor=#2f5634;" vertex="1" parent="1">
+                    <mxGeometry x="-20" y="-70" width="2590" height="960" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;b style=&quot;color: rgb(63, 63, 63); scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); font-size: 16px;&quot;&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;組織知&lt;/b&gt;&lt;/span&gt;&lt;b style=&quot;scrollbar-color: rgb(226, 226, 226) rgb(251, 251, 251); font-size: 16px; color: rgb(63, 63, 63);&quot;&gt;関連&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingTop=8;spacingRight=10;strokeColor=#E5CCFF;strokeWidth=7;fillColor=none;fontSize=18;fontColor=#4f81bd;pointerEvents=0;" vertex="1" parent="6">
+                    <mxGeometry x="1650" y="80" width="900" height="850" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_group_org_category" value="1 : N&lt;br&gt;knowledge_group_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#777777;fontSize=10;dashed=1;dashPattern=8 4;labelBackgroundColor=#E6E6E6;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="groups" target="organizational_knowledge_categories">
+                    <mxGeometry x="-0.6091" relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1600" y="670"/>
+                            <mxPoint x="1600" y="190"/>
+                        </Array>
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_user_org_discussion" value="1 : N&lt;br&gt;user_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#777777;fontSize=10;dashed=1;dashPattern=8 4;labelBackgroundColor=#E6E6E6;" edge="1" parent="1" source="users" target="organizational_knowledge_discussion_posts">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1630" y="488"/>
+                            <mxPoint x="1630" y="553"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
