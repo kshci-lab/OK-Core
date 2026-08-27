@@ -64,6 +64,8 @@ try {
         throw new RuntimeException('SSO client_id / client_secret are not configured. Use 開発用ログイン or set real SSO credentials.');
     }
 
+    // Rotate the pre-authentication session before storing OAuth state.
+    session_regenerate_id(true);
     $provider = hcimlab_sso_provider();
     $nonce = bin2hex(random_bytes(16));
     $_SESSION['HCIMLAB_SSO_NONCE'] = $nonce;
@@ -75,6 +77,7 @@ try {
 
     $_SESSION['HCIMLAB_SSO_STATE'] = $provider->getState();
     $_SESSION['HCIMLAB_SSO_PKCE'] = $provider->getPkceCode();
+    $_SESSION['HCIMLAB_SSO_STARTED_AT'] = time();
 
     header('Location: ' . $authorizationUrl);
     exit;

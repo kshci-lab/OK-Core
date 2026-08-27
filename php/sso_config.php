@@ -55,4 +55,16 @@ if (file_exists($localConfigPath)) {
     }
 }
 
+// Development-only helpers must never be enabled accidentally in production.
+// APP_ENV=production is the deployment switch used by the AWS environment.
+$appEnvironment = strtolower(trim((string)hcimlab_sso_env_or_default('APP_ENV', 'local')));
+$devAuthOverride = getenv('HCIMLAB_SSO_DEV_AUTH');
+if ($devAuthOverride !== false && $devAuthOverride !== '') {
+    $config['dev_auth'] = in_array(strtolower(trim((string)$devAuthOverride)), array('1', 'true', 'yes', 'on'), true);
+} elseif ($appEnvironment === 'production') {
+    $config['dev_auth'] = false;
+}
+
+$config['environment'] = $appEnvironment;
+
 return $config;

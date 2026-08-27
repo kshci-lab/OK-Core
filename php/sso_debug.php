@@ -5,6 +5,10 @@ hcimlab_start_session();
 require_once __DIR__ . '/hcimlab_sso.php';
 
 $config = hcimlab_sso_config();
+if (($config['environment'] ?? 'local') === 'production') {
+    http_response_code(404);
+    exit;
+}
 $resolvedClientUrl = hcimlab_sso_resolve_client_url();
 $tokenAuthMethod = hcimlab_sso_token_auth_method();
 $isConfigured = hcimlab_sso_is_oauth_configured();

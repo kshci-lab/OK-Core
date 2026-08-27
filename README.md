@@ -100,6 +100,17 @@ For local development, register these redirect URIs in HCIMLab SSO:
 - OK-Core: `http://localhost:8888/OK-Core/auth/callback`
 
 Forest-Core and OK-Core are separate projects. Each project must register its own redirect URI and keep its own `php/sso_local.php`.
+
+For deployment, set the following environment variables instead of relying on the request Host header:
+
+- `APP_ENV=production`
+- `HCIMLAB_SSO_BASE_URL=https://ok.example.com`
+- `HCIMLAB_SSO_REDIRECT_URI=https://ok.example.com/auth/callback`
+- `HCIMLAB_SSO_CLIENT_ID=...`
+- `HCIMLAB_SSO_CLIENT_SECRET=...`
+- `HCIMLAB_SSO_DEV_AUTH=false`
+
+The development login and `/php/sso_debug.php` are disabled when `APP_ENV=production`.
 ## Verified separation status
 
 The current local separation path has been verified:
@@ -114,5 +125,4 @@ Remaining hardening:
 - Replace the temporary direct DB bridge with an authenticated OK-Core import API before deploying Forest-Core and OK-Core to separate servers.
 - Add import audit/retry records for Forest-Core to OK-Core KF exports.
 - Keep each project's `php/sso_local.php`, `php/connect_db.php`, URL, and database independent.
-
 

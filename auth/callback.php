@@ -16,6 +16,15 @@ try {
         throw new RuntimeException('Invalid SSO state.');
     }
 
+    $startedAt = isset($_SESSION['HCIMLAB_SSO_STARTED_AT']) ? (int)$_SESSION['HCIMLAB_SSO_STARTED_AT'] : 0;
+    if ($startedAt <= 0 || (time() - $startedAt) > 600) {
+        throw new RuntimeException('SSO login attempt expired. Please try again.');
+    }
+
+    if (empty($_SESSION['HCIMLAB_SSO_PKCE']) || empty($_SESSION['HCIMLAB_SSO_NONCE'])) {
+        throw new RuntimeException('SSO login session is incomplete. Please try again.');
+    }
+
     if (empty($_GET['code'])) {
         throw new RuntimeException('SSO callback does not contain an authorization code.');
     }
@@ -71,11 +80,11 @@ try {
     $_SESSION['HCIMLAB_SSO_REFRESH_TOKEN'] = $token->getRefreshToken();
     $_SESSION['HCIMLAB_SSO_TOKEN_EXPIRES'] = $token->getExpires();
 
-    unset($_SESSION['HCIMLAB_SSO_STATE'], $_SESSION['HCIMLAB_SSO_PKCE'], $_SESSION['HCIMLAB_SSO_NONCE'], $_SESSION['SSO_ERROR'], $_SESSION['HCIMLAB_SSO_FORCE_LOGIN']);
+    unset($_SESSION['HCIMLAB_SSO_STATE'], $_SESSION['HCIMLAB_SSO_PKCE'], $_SESSION['HCIMLAB_SSO_NONCE'], $_SESSION['HCIMLAB_SSO_STARTED_AT'], $_SESSION['SSO_ERROR'], $_SESSION['HCIMLAB_SSO_FORCE_LOGIN']);
 
     header('Location: ' . $baseUrl . '/index.php');
     exit;
 } catch (Throwable $e) {
-    unset($_SESSION['HCIMLAB_SSO_STATE'], $_SESSION['HCIMLAB_SSO_PKCE'], $_SESSION['HCIMLAB_SSO_NONCE'], $_SESSION['HCIMLAB_SSO_FORCE_LOGIN']);
+    unset($_SESSION['HCIMLAB_SSO_STATE'], $_SESSION['HCIMLAB_SSO_PKCE'], $_SESSION['HCIMLAB_SSO_NONCE'], $_SESSION['HCIMLAB_SSO_STARTED_AT'], $_SESSION['HCIMLAB_SSO_FORCE_LOGIN']);
     hcimlab_sso_redirect_to_login($e->getMessage());
 }
