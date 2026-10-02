@@ -8,4 +8,6 @@ CREATE TABLE IF NOT EXISTS `external_user_mappings` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `ux_external_user_mapping` (`source_system`, `source_user_ref`),
   KEY `idx_external_user_mapping_user_id` (`user_id`)
-);
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_general_ci;
