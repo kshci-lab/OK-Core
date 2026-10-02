@@ -257,6 +257,49 @@ function import_kf_get_or_create_external_user_id(mysqli $mysqli, string $source
     ]);
 }
 
+function import_kf_resolve_user_id(
+    mysqli $mysqli,
+    string $sourceSystem,
+    string $sourceUserRef,
+    string $sourceUserName
+): int {
+    if (
+        $sourceSystem !== ''
+        && $sourceUserRef !== ''
+        && import_kf_table_exists($mysqli, 'external_user_mappings')
+    ) {
+        $stmt = $mysqli->prepare(
+            'SELECT user_id
+               FROM external_user_mappings
+              WHERE source_system = ?
+                AND source_user_ref = ?
+              LIMIT 1'
+        );
+
+        if ($stmt) {
+            $stmt->bind_param('ss', $sourceSystem, $sourceUserRef);
+
+            if ($stmt->execute()) {
+                $stmt->bind_result($mappedUserId);
+
+                if ($stmt->fetch()) {
+                    $stmt->close();
+                    return (int)$mappedUserId;
+                }
+            }
+
+            $stmt->close();
+        }
+    }
+
+    return import_kf_get_or_create_external_user_id(
+        $mysqli,
+        $sourceSystem,
+        $sourceUserRef,
+        $sourceUserName
+    );
+}
+
 function import_kf_base_url(): string
 {
     $envBaseUrl = getenv('HCIMLAB_SSO_BASE_URL');
@@ -395,7 +438,7 @@ if ($groupRaw !== '') {
 $sourceUserRefValue = ($sourceUserRef === '') ? null : $sourceUserRef;
 $rawPayloadValue = $rawJson;
 
-$importUserId = import_kf_get_or_create_external_user_id($mysqli, $sourceSystem, $sourceUserRef, $sourceUserName);
+$importUserId = import_kf_resolve_user_id($mysqli, $sourceSystem, $sourceUserRef, $sourceUserName);
 
 $checkSql = 'SELECT externalized_contents_id
                FROM externalized_contents
