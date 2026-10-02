@@ -1678,7 +1678,7 @@ const getOrganizationalMapDataFromDB = (callback) => {
                 },
             }).success((r) => {
                 // console.log(r);
-                organizational_list = JSON.parse(r);
+                organizational_list = (typeof r === 'string') ? JSON.parse(r) : r;
                 organizational_current_user_id = organizational_list.current_user_id || null;
                 if (organizational_list.selected_group_id !== undefined && organizational_list.selected_group_id !== null) {
                     organizational_group_id = organizational_list.selected_group_id;

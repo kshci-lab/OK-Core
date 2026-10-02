@@ -1954,8 +1954,13 @@
     el.textContent = '読み込み中...';
 
     var gid = getSelectedGroupId();
-    var url = 'php/get_knowledge_tree.php';
-    if(gid) url += '?group_id=' + encodeURIComponent(gid);
+
+    if(!gid){
+      el.textContent = '組織を選択してください';
+      return;
+    }
+
+    var url = 'php/get_knowledge_tree.php?group_id=' + encodeURIComponent(gid);
 
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
