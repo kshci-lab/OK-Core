@@ -87,6 +87,7 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
             <form id="group_select_form" class="group_select_form" action="javascript:void(0);">
                 <label for="group_select" id="group_select_label">組織</label>
                 <select id="group_select" name="group_select"></select>
+                <span id="group_kf_status" class="group-kf-status" role="status" aria-live="polite"></span>
             </form>
         </section>
 
@@ -151,7 +152,7 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
                                         <button type="button" id="kfrag-redo" class="kfrag-action-btn" disabled>Redo</button>
                                     </div>
                                 </div>
-                                <?php include __DIR__ . '/php/get_knowledge_fragments.php'; ?>
+                                <div class="knowledge-fragment-list"><div class="no-fragment-note">KFを読み込み中…</div></div>
                             </div>
                         </div>
 
@@ -160,6 +161,7 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
                                 <div class="overlay-title">
                                     <span class="title-text">議論履歴</span>
                                     <button type="button" id="fragment-discussed-toggle" class="fragment-discussed-btn">議論開始</button>
+                                    <button type="button" id="discussion-refresh-button" class="discussion-refresh-button" aria-label="議論履歴を更新" title="議論履歴を更新">&#x21bb;</button>
                                     <button type="button" id="fragment-add-select-toggle" class="fragment-add-select-btn" aria-label="追加のKFを選択">
                                         <span class="plus-icon" aria-hidden="true">+</span>
                                         <span class="tooltip">追加のKFを選択</span>
@@ -252,7 +254,7 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
     <div id="labelselect" class="compat-hidden"></div>
     <div id="accordion_discussion" class="compat-hidden"></div>
 
-    <script src="js/organizational-map.js"></script>
-    <script src="js/organizational-combination-tab.js"></script>
+    <script src="js/organizational-map.js?v=<?php echo (int)filemtime(__DIR__ . '/js/organizational-map.js'); ?>"></script>
+    <script src="js/organizational-combination-tab.js?v=<?php echo (int)filemtime(__DIR__ . '/js/organizational-combination-tab.js'); ?>"></script>
 </body>
 </html>

@@ -6,7 +6,10 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 // 環境側で MYSQLI_REPORT_STRICT が有効だと mysqli_* が例外を投げて 500 になりやすいので、このAPI内では例外化を無効化
 mysqli_report(MYSQLI_REPORT_OFF);
+require_once __DIR__ . '/session_bootstrap.php';
+hcimlab_start_session();
 require_once __DIR__ . '/connect_db.php';
+require_once __DIR__ . '/knowledge_group_access.php';
 
 if(!isset($mysqli) || !($mysqli instanceof mysqli)){
     http_response_code(500);
@@ -14,22 +17,18 @@ if(!isset($mysqli) || !($mysqli instanceof mysqli)){
     exit;
 }
 @$mysqli->set_charset('utf8mb4');
-if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
-
-function __resolve_knowledge_tree_group_id(mysqli $mysqli): string {
-    $groupId = isset($_GET['group_id']) ? trim((string)$_GET['group_id']) : '';
-    if($groupId !== ''){ return $groupId; }
-    $userId = isset($_SESSION['USERID']) ? (string)$_SESSION['USERID'] : '';
-    if($userId === ''){ return ''; }
-    if($stmt = $mysqli->prepare("SELECT group_id FROM kgroup_user_link WHERE user_id = ? ORDER BY created_at DESC LIMIT 1")){
-        $stmt->bind_param('s', $userId);
-        if($stmt->execute()){
-            $stmt->bind_result($gid);
-            if($stmt->fetch() && $gid !== null){ $groupId = trim((string)$gid); }
-        }
-        $stmt->close();
-    }
-    return $groupId;
+$requestedGroupId = isset($_GET['group_id']) ? trim((string)$_GET['group_id']) : '';
+$userId = isset($_SESSION['USERID']) ? (string)$_SESSION['USERID'] : '';
+$groupAccess = ok_core_resolve_active_group($mysqli, $requestedGroupId, $userId);
+if ($groupAccess['status'] !== 200) {
+    http_response_code($groupAccess['status']);
+    echo json_encode(['status' => 'error', 'message' => $groupAccess['status'] === 403 ? 'forbidden_group' : 'group_unavailable']);
+    exit;
+}
+$selectedGroupId = $groupAccess['group_id'];
+if ($selectedGroupId === '') {
+    echo json_encode(['status' => 'ok', 'nodes' => [], 'selected_group_id' => null]);
+    exit;
 }
 
 function __split_knowledge_tree_ids($value): array {
@@ -182,7 +181,6 @@ if ($resCols = $mysqli->query("SHOW COLUMNS FROM $table")) {
     $resCols->close();
 }
 // 少なくともタイトルが無いと表示不能
-$selectedGroupId = __resolve_knowledge_tree_group_id($mysqli);
 $groupWhere = '';
 $groupWhereAlias = '';
 if($colGroup !== null && $selectedGroupId !== ''){
@@ -366,6 +364,35 @@ if($resAll = $mysqli->query($sqlAll)){
     ];
 }
 
+$allowedExperienceIds = [];
+$allowedDiscussionIds = [];
+$groupIdForRefs = (int)$selectedGroupId;
+if ($res = $mysqli->query("SELECT DISTINCT ek.experience_knowledge_id
+                             FROM shared_nodes sn
+                             INNER JOIN experience_knowledges ek ON ek.experience_knowledge_id = sn.experience_knowledge_id
+                            WHERE sn.knowledge_group_id = $groupIdForRefs AND sn.deleted = 0 AND ek.deleted = 0")) {
+    while ($row = $res->fetch_assoc()) { $allowedExperienceIds[(int)$row['experience_knowledge_id']] = true; }
+    $res->free();
+}
+if ($res = $mysqli->query("SELECT externalized_contents_id
+                             FROM externalized_contents
+                            WHERE group_id = $groupIdForRefs AND deleted = 0")) {
+    while ($row = $res->fetch_assoc()) { $allowedDiscussionIds[(int)$row['externalized_contents_id']] = true; }
+    $res->free();
+}
+foreach ($nodes as &$node) {
+    if (!empty($node['knowledge_fragment_id'])) {
+        $visibleIds = array_values(array_filter(__split_knowledge_tree_ids($node['knowledge_fragment_id']), static function ($id) use ($allowedExperienceIds, $allowedDiscussionIds) {
+            return isset($allowedExperienceIds[$id]) || isset($allowedDiscussionIds[$id]);
+        }));
+        $node['knowledge_fragment_id'] = $visibleIds ? implode(',', $visibleIds) : null;
+    }
+    if (!empty($node['externalized_contents_id']) && !isset($allowedDiscussionIds[(int)$node['externalized_contents_id']])) {
+        $node['externalized_contents_id'] = null;
+    }
+}
+unset($node);
+
 $linkTypesByNode = [];
 $linkIdsByNode = [];
 if (!empty($nodes)) {
@@ -391,6 +418,8 @@ if (!empty($nodes)) {
                         $sourceType = __normalize_knowledge_tree_source_type(isset($linkRow['fragment_source_type']) ? $linkRow['fragment_source_type'] : '');
                         $sourceId = isset($linkRow['fragment_source_id']) ? intval($linkRow['fragment_source_id'], 10) : 0;
                         if ($linkNodeId <= 0 || $sourceType === '' || $sourceId <= 0) { continue; }
+                        if ($sourceType === 'experience' && !isset($allowedExperienceIds[$sourceId])) { continue; }
+                        if ($sourceType === 'discussion' && !isset($allowedDiscussionIds[$sourceId])) { continue; }
                         if (!isset($linkTypesByNode[$linkNodeId])) { $linkTypesByNode[$linkNodeId] = []; }
                         if (!isset($linkIdsByNode[$linkNodeId])) { $linkIdsByNode[$linkNodeId] = []; }
                         if (!in_array($sourceType, $linkTypesByNode[$linkNodeId], true)) { $linkTypesByNode[$linkNodeId][] = $sourceType; }

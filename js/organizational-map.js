@@ -651,6 +651,18 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
         });
     }
 
+    buildProducedKnowledgeTooltipData(nodeInfo){
+        const label = (value) => value == null || String(value).trim() === '' ? '未入力' : String(value).trim();
+        return { sections: [
+            { heading: 'When', body: label(nodeInfo.tacto_when) },
+            { heading: 'What', body: label(nodeInfo.tacto_what) },
+            { heading: 'Why', body: label(nodeInfo.tacto_why) },
+            { heading: '組織知化の根拠', body: label(nodeInfo.organizational_basis) },
+            { heading: 'コメント', body: label(nodeInfo.comment) },
+            { heading: '更新日時', body: label(nodeInfo.updated_at) }
+        ] };
+    }
+
     addProducedKnowledgeNode(nodeInfo, childMap){
         if (!nodeInfo || nodeInfo.node_id === null || typeof nodeInfo.node_id === 'undefined') return false;
         const fragmentIds = this.getKnowledgeTreeFragmentIds(nodeInfo);
@@ -658,7 +670,8 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
         const sourceTypes = this.parseSourceTypes(nodeInfo.fragment_source_types, fragmentIds.length ? 'experience' : '');
         const children = childMap[String(nodeInfo.node_id)] || [];
         const isRootNode = (nodeInfo.parent_id === null || typeof nodeInfo.parent_id === 'undefined');
-        if (isRootNode || children.length > 0) return false;
+        const hasKnowledgeLink = fragmentIds.length > 0 || sourceTypes.length > 0;
+        if (isRootNode || (children.length > 0 && !hasKnowledgeLink)) return false;
 
         const nodeId = `kt_${nodeInfo.node_id}`;
         let addedNode = false;
@@ -681,12 +694,7 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
                 },
                 shape: 'box',
                 font: { color: 'black' },
-                tooltip_data: {
-                    sections: [
-                        { heading: 'コメント', body: nodeInfo.comment || '' },
-                        { heading: '更新日時', body: nodeInfo.updated_at || '' }
-                    ]
-                },
+                tooltip_data: this.buildProducedKnowledgeTooltipData(nodeInfo),
                 fixed: false,
             });
             addedNode = true;
@@ -696,7 +704,8 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
                 knowledge_fragment_ids: fragmentIds,
                 knowledge_fragment_node_ids: fragmentNodeIds,
                 source_type: sourceTypes[0] || '',
-                source_types: sourceTypes
+                source_types: sourceTypes,
+                tooltip_data: this.buildProducedKnowledgeTooltipData(nodeInfo)
             });
         }
 
@@ -744,7 +753,9 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
         return addedCount;
     }
 
-    loadProducedKnowledgeNodes(groupId, allowGroupFallback = true){
+    loadProducedKnowledgeNodes(groupId){
+        this.producedKnowledgeRequestVersion = (this.producedKnowledgeRequestVersion || 0) + 1;
+        const requestVersion = this.producedKnowledgeRequestVersion;
         let url = 'php/get_knowledge_tree.php';
         if (groupId) {
             url += '?group_id=' + encodeURIComponent(groupId);
@@ -754,8 +765,11 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
             type: 'GET',
             dataType: 'json',
             success: (data) => {
+                const groupSelect = document.getElementById('group_select');
+                const selectedGroupId = groupSelect ? groupSelect.value : '';
+                if (requestVersion !== this.producedKnowledgeRequestVersion || String(selectedGroupId) !== String(groupId || '')) return;
                 if (!data || data.status !== 'ok' || !Array.isArray(data.nodes)) {
-                    this.syncProducedKnowledgeFromDom();
+                    if (!groupId) this.syncProducedKnowledgeFromDom();
                     return;
                 }
                 const childMap = {};
@@ -770,22 +784,17 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
                         addedCount += 1;
                     }
                 });
-                if (addedCount === 0) {
+                if (addedCount === 0 && !groupId) {
                     addedCount = this.syncProducedKnowledgeFromDom();
-                }
-                if (addedCount === 0 && groupId && allowGroupFallback) {
-                    this.loadProducedKnowledgeNodes('', false);
-                    return;
                 }
                 this.applySourceFilter(this.activeSourceTypes);
                 this.refreshProducedKnowledgeView(addedCount);
             },
             error: (xhr, status, error) => {
+                const groupSelect = document.getElementById('group_select');
+                if (requestVersion !== this.producedKnowledgeRequestVersion || String(groupSelect ? groupSelect.value : '') !== String(groupId || '')) return;
                 console.warn('knowledge_tree 読み込み失敗', status, error);
-                const addedCount = this.syncProducedKnowledgeFromDom();
-                if (addedCount === 0 && groupId && allowGroupFallback) {
-                    this.loadProducedKnowledgeNodes('', false);
-                }
+                if (!groupId) this.syncProducedKnowledgeFromDom();
                 this.applySourceFilter(this.activeSourceTypes);
             }
         });
@@ -1647,6 +1656,14 @@ let organizational_mode;
 let organizational_group_id;
 let organizational_list;
 let organizational_current_user_id = null;
+let organizational_request_version = 0;
+
+function setOrganizationalLoadStatus(message, isError) {
+    const status = document.getElementById('group_kf_status');
+    if (!status) return;
+    status.textContent = message;
+    status.classList.toggle('is-error', !!isError);
+}
 
 function dispatchOrganizationalGroupChanged(groupId) {
     try {
@@ -1665,29 +1682,31 @@ function dispatchOrganizationalGroupChanged(groupId) {
 }
 
 const getOrganizationalMapDataFromDB = (callback) => {
-    console.log(organizational_group_id);
-    //選択されているノードIDとconcept_id
-    return new Promise((resolve, reject) => {
-        try{
-            return $.ajax({
-                url: "php/organizational_map_manager.php",
-                type: "POST",
-                data: {
-                    mode: organizational_mode,
-                    group_id: organizational_group_id,
-                },
-            }).success((r) => {
-                // console.log(r);
-                organizational_list = JSON.parse(r);
-                organizational_current_user_id = organizational_list.current_user_id || null;
-                if (organizational_list.selected_group_id !== undefined && organizational_list.selected_group_id !== null) {
-                    organizational_group_id = organizational_list.selected_group_id;
-                }
-                console.log(organizational_list);
-                callback(organizational_list);
-            });
-        } catch (error){
-            reject(error);
+    const requestVersion = ++organizational_request_version;
+    setOrganizationalLoadStatus('KFを読み込み中…', false);
+    return $.ajax({
+        url: 'php/organizational_map_manager.php',
+        type: 'POST',
+        dataType: 'json',
+        data: {
+            mode: organizational_mode,
+            group_id: organizational_group_id || ''
+        },
+        success: function(data) {
+            if (requestVersion !== organizational_request_version) return;
+            if (!data || data.error || !Array.isArray(data.groups)) {
+                setOrganizationalLoadStatus('KFを読み込めませんでした。', true);
+                return;
+            }
+            organizational_list = data;
+            organizational_current_user_id = data.current_user_id || null;
+            organizational_group_id = data.selected_group_id || '';
+            callback(data);
+        },
+        error: function() {
+            if (requestVersion === organizational_request_version) {
+                setOrganizationalLoadStatus('KFを読み込めませんでした。', true);
+            }
         }
     });
 }
@@ -1731,11 +1750,11 @@ const displayOrganizationalData = (mode, selected_group_id) => {
             }
             let j = 0;
             // ユーザーのアイコンを表示
-            organizational_list_info.users.forEach((v) => {
+            (organizational_list_info.users || []).forEach((v) => {
                 defaultOrganizational.addUserNode(v.user_id, v.name, "users");
             });
             // ユーザーごとの思考過程ノードを表示
-            organizational_list_info.enode.map((n) => {
+            (organizational_list_info.enode || []).forEach((n) => {
                 defaultOrganizational.addReloadProcessNode(
                     n.user_id,
                     n.display_node_id || defaultOrganizational.makeFragmentNodeId(n.source_type, n.source_id || n.experience_knowledge_id || n.externalized_contents_id),
@@ -1753,6 +1772,10 @@ const displayOrganizationalData = (mode, selected_group_id) => {
             });
             defaultOrganizational.applyNodeDisplayStyles();
             try{ defaultOrganizational.ownNetwork.redraw(); }catch(_){}
+            const fragmentCount = (organizational_list_info.enode || []).length;
+            setOrganizationalLoadStatus(effectiveSelectedGroupId
+                ? 'KF ' + fragmentCount + '件'
+                : '表示できる組織がありません。', false);
             // ユーザーごとのTriggerノードを表示
             // organizational_list_info.tnode.map((t) => {
             //     defaultOrganizational.addReloadTriggerNode(t.user_id, t.trigger_node_id, t.content, t.trigger_node_type);

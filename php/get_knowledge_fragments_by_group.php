@@ -4,12 +4,14 @@
 //
 // - If group_id is provided (GET), filter fragments shared in that group.
 // - If not provided, try to use the latest group for the logged-in user.
-// - If no group can be determined, fall back to showing all fragments (legacy).
+// - A fragment is visible only when it is shared with the selected group.
 
 header('Content-Type: text/html; charset=UTF-8');
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 
+require_once __DIR__ . '/session_bootstrap.php';
+hcimlab_start_session();
 require_once __DIR__ . '/connect_db.php';
 if(!isset($mysqli) || !($mysqli instanceof mysqli)){
   http_response_code(500);
@@ -18,8 +20,12 @@ if(!isset($mysqli) || !($mysqli instanceof mysqli)){
 }
 @$mysqli->set_charset('utf8mb4');
 
-if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
 $user_id = isset($_SESSION['USERID']) ? (string)$_SESSION['USERID'] : '';
+if ($user_id === '') {
+  http_response_code(401);
+  echo '<div class="knowledge-fragment-list"><div class="no-fragment-note">ログインが必要です。</div></div>';
+  exit;
+}
 
 /**
  * Fetch all rows from a prepared statement as associative arrays without mysqlnd.
@@ -50,22 +56,32 @@ function __stmt_fetch_all_assoc(mysqli_stmt $stmt): array {
   return $rows;
 }
 
-$group_id = isset($_GET['group_id']) ? trim((string)$_GET['group_id']) : '';
-if ($group_id === '' && $user_id !== '') {
-  // pick latest group for the user
-  if ($st = $mysqli->prepare("SELECT group_id FROM kgroup_user_link WHERE user_id = ? ORDER BY created_at DESC LIMIT 1")) {
-    $st->bind_param('s', $user_id);
-    if ($st->execute()) {
-      $rows = __stmt_fetch_all_assoc($st);
-      if (!empty($rows)) {
-        $row0 = $rows[0];
-        if (isset($row0['group_id']) && trim((string)$row0['group_id']) !== '') {
-          $group_id = trim((string)$row0['group_id']);
-        }
-      }
-    }
-    $st->close();
+$requested_group_id = isset($_GET['group_id']) ? trim((string)$_GET['group_id']) : '';
+if ($requested_group_id !== '' && !ctype_digit($requested_group_id)) {
+  http_response_code(400);
+  echo '<div class="knowledge-fragment-list"><div class="no-fragment-note">組織の指定が正しくありません。</div></div>';
+  exit;
+}
+$membershipSql = "SELECT kul.group_id
+                  FROM kgroup_user_link kul
+                  INNER JOIN knowledge_groups kg ON kg.group_id = kul.group_id
+                  WHERE kul.user_id = ? AND kul.deleted = 0 AND kg.deleted = 0";
+if ($requested_group_id !== '') { $membershipSql .= ' AND kul.group_id = ?'; }
+$membershipSql .= ' ORDER BY kul.created_at DESC LIMIT 1';
+$group_id = '';
+if ($st = $mysqli->prepare($membershipSql)) {
+  if ($requested_group_id !== '') { $st->bind_param('ss', $user_id, $requested_group_id); }
+  else { $st->bind_param('s', $user_id); }
+  if ($st->execute()) {
+    $rows = __stmt_fetch_all_assoc($st);
+    $group_id = !empty($rows) ? (string)$rows[0]['group_id'] : '';
   }
+  $st->close();
+}
+if ($group_id === '') {
+  if ($requested_group_id !== '') { http_response_code(403); }
+  echo '<div class="knowledge-fragment-list"><div class="no-fragment-note">表示できる組織がありません。</div></div>';
+  exit;
 }
 
 // Current user name (fallback)
@@ -184,23 +200,6 @@ if ($resT = $mysqli->query("SHOW TABLES LIKE 'experience_knowledges'")) {
   }
 }
 
-$groupUserIds = [];
-if ($group_id !== '') {
-  if ($stmt = $mysqli->prepare("SELECT user_id FROM kgroup_user_link WHERE group_id = ?")) {
-    $stmt->bind_param('s', $group_id);
-    if ($stmt->execute()) {
-      $rows = __stmt_fetch_all_assoc($stmt);
-      foreach ($rows as $row) {
-        if (isset($row['user_id']) && trim((string)$row['user_id']) !== '') {
-          $groupUserIds[] = (string)$row['user_id'];
-        }
-      }
-      $groupUserIds = array_values(array_unique($groupUserIds));
-    }
-    $stmt->close();
-  }
-}
-
 if ($resT = $mysqli->query("SHOW TABLES LIKE 'externalized_contents'")) {
   $hasTable = ($resT->num_rows > 0);
   $resT->free();
@@ -234,26 +233,11 @@ if ($resT = $mysqli->query("SHOW TABLES LIKE 'externalized_contents'")) {
     if ($group_id !== '') {
       if ($hasGroupColumn) {
         $groupIdInt = intval($group_id, 10);
-        if ($groupUserIds) {
-          $placeholders = implode(',', array_fill(0, count($groupUserIds), '?'));
-          $sql .= " AND (ec.group_id = ? OR ec.user_id IN ($placeholders))";
-          $types = 'i' . str_repeat('s', count($groupUserIds));
-          $params[] = $groupIdInt;
-          foreach ($groupUserIds as $uid) { $params[] = $uid; }
-        } else {
-          $sql .= " AND ec.group_id = ?";
-          $types = 'i';
-          $params[] = $groupIdInt;
-        }
+        $sql .= " AND ec.group_id = ?";
+        $types = 'i';
+        $params[] = $groupIdInt;
       } else {
-        if (!$groupUserIds) {
-          $sql .= " AND 1 = 0";
-        } else {
-          $placeholders = implode(',', array_fill(0, count($groupUserIds), '?'));
-          $sql .= " AND ec.user_id IN ($placeholders)";
-          $types = str_repeat('s', count($groupUserIds));
-          $params = $groupUserIds;
-        }
+        $sql .= " AND 1 = 0";
       }
     }
     $sql .= " ORDER BY ec.updated_at DESC, ec.externalized_contents_id DESC";

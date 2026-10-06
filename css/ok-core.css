@@ -146,6 +146,17 @@ button:hover,
     margin: 0;
 }
 
+.group-kf-status {
+    min-width: 72px;
+    color: #48636b;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.group-kf-status.is-error {
+    color: #ad3434;
+}
+
 #group_select {
     min-width: 220px;
     min-height: 34px;

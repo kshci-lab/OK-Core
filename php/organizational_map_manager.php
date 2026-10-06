@@ -4,6 +4,7 @@
 require_once __DIR__ . '/session_bootstrap.php';
 hcimlab_start_session();
 require_once __DIR__ . '/connect_db.php';
+require_once __DIR__ . '/knowledge_group_access.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -17,9 +18,27 @@ $mode = isset($_POST['mode']) ? (string)$_POST['mode'] : '';
 $group_id_latest = isset($_POST['group_id']) ? (string)$_POST['group_id'] : '';
 
 if ($user_id === null) {
+    http_response_code(401);
     echo json_encode(['error' => 'not_logged_in'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
+if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
+    http_response_code(500);
+    echo json_encode(['error' => 'database_unavailable'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+if ($group_id_latest !== '' && (!ctype_digit($group_id_latest) || (int)$group_id_latest <= 0)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'invalid_group'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+$groupAccess = ok_core_resolve_active_group($mysqli, $group_id_latest, (string)$user_id);
+if ($groupAccess['status'] !== 200) {
+    http_response_code($groupAccess['status']);
+    echo json_encode(['error' => $groupAccess['status'] === 403 ? 'forbidden_group' : 'group_lookup_failed'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+$group_id_latest = $groupAccess['group_id'];
 
 $return_data = []; // DBアクセスの結果として返すキー・バリューのペア
 
@@ -27,48 +46,43 @@ $return_data = []; // DBアクセスの結果として返すキー・バリュ�
 $groups = [];
 $group_ids = [];
 
-if($mode === "all" || $mode === "allRE" ){
+if($mode === "all" || $mode === "allRE" || $mode === "group"){
     // kgroup_user_linkからgroup_idを取得
-    $sql = "SELECT group_id, created_at FROM kgroup_user_link WHERE user_id = ? ORDER BY created_at DESC";
+    $sql = "SELECT kg.group_id, kg.name
+            FROM kgroup_user_link kul
+            INNER JOIN knowledge_groups kg ON kg.group_id = kul.group_id
+            WHERE kul.user_id = ? AND kul.deleted = 0 AND kg.deleted = 0
+            ORDER BY kul.created_at DESC, kg.group_id DESC";
     if ($stmt = $mysqli->prepare($sql)) {
         $stmt->bind_param('s', $user_id);
         $stmt->execute();
         $result = $stmt->get_result();
         while ($row = $result->fetch_assoc()) {
-            $group_ids[] = $row['group_id'];
-            if (empty($group_id_latest)) {
-                $group_id_latest = $row['group_id']; // created_atが最新のgroup_id
+            $groupId = (string)$row['group_id'];
+            if (!in_array($groupId, $group_ids, true)) {
+                $group_ids[] = $groupId;
+                $groups[] = $row;
             }
         }
         $stmt->close();
-
-        if (!empty($group_ids)) {
-            // knowledge_groupsからgroup_idに合致する情報を取得
-            $in = implode(',', array_fill(0, count($group_ids), '?'));
-            $sql2 = "SELECT * FROM knowledge_groups WHERE group_id IN ($in) ORDER BY created_at DESC";
-            if ($stmt2 = $mysqli->prepare($sql2)) {
-                $types = str_repeat('s', count($group_ids));
-                $stmt2->bind_param($types, ...$group_ids);
-                $stmt2->execute();
-                $result2 = $stmt2->get_result();
-                while ($row2 = $result2->fetch_assoc()) {
-                    $groups[] = $row2;
-                }
-                $stmt2->close();
-            }
-        }
+    }
+    if ($group_id_latest !== '' && !in_array($group_id_latest, $group_ids, true)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'forbidden_group'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+    if ($group_id_latest === '') {
+        $group_id_latest = $group_ids[0] ?? '';
     }
     $return_data['groups'] = $groups;
     
-    
-}else if($mode === "group"){
     
 }
 
 // 最新のgroup_idに所属するuser_id一覧を取得
 $user_ids_in_latest_group = [];
 if (!empty($group_id_latest)) {
-    $sql3 = "SELECT user_id FROM kgroup_user_link WHERE group_id = ? ORDER BY created_at DESC";
+    $sql3 = "SELECT user_id FROM kgroup_user_link WHERE group_id = ? AND deleted = 0 ORDER BY created_at DESC";
     if ($stmt3 = $mysqli->prepare($sql3)) {
         $stmt3->bind_param('s', $group_id_latest);
         $stmt3->execute();
@@ -107,16 +121,15 @@ if (!empty($user_ids_in_latest_group)) {
     $user_ids_in_sql = implode(",", array_map('intval', $user_ids_in_latest_group));
     $selected_group_id_sql = intval($group_id_latest);
     $sql_nodes = "SELECT sn.id AS shared_node_id, sn.knowledge_group_id, ec.experience_knowledge_id, ec.experience_type, ec.thought_experience_node_id, ec.user_id, ec.selected_contents, ec.knowledge_fragment_content, ec.stage1, ec.stage2, ec.stage3
-        FROM experience_knowledges ec
-        LEFT JOIN shared_nodes sn
-          ON sn.experience_knowledge_id = ec.experience_knowledge_id
-          AND sn.knowledge_group_id = $selected_group_id_sql
-          AND sn.deleted = 0
-        WHERE ec.user_id IN ($user_ids_in_sql)
+        FROM shared_nodes sn
+        INNER JOIN experience_knowledges ec
+          ON ec.experience_knowledge_id = sn.experience_knowledge_id
+        WHERE sn.knowledge_group_id = $selected_group_id_sql
+            AND sn.deleted = 0
             AND ec.deleted = 0
             AND ec.knowledge_fragment_content IS NOT NULL
             AND LENGTH(TRIM(ec.knowledge_fragment_content)) > 0
-        ORDER BY COALESCE(sn.created_at, ec.updated_at) DESC, ec.experience_knowledge_id DESC;";
+        ORDER BY sn.created_at DESC, ec.experience_knowledge_id DESC;";
     
     $result_organi_map_node = $mysqli->query($sql_nodes);
     $organi_map_node = [];
@@ -148,15 +161,9 @@ if (!empty($user_ids_in_latest_group)) {
                 WHERE ec.deleted = 0
                     AND ec.`{$contentCol}` IS NOT NULL
                     AND LENGTH(TRIM(ec.`{$contentCol}`)) > 0";
-            if ($hasGroupColumn && $selected_group_id_sql > 0) {
-                $sql_externalized .= " AND (ec.group_id = $selected_group_id_sql";
-                if (!empty($user_ids_in_sql)) {
-                    $sql_externalized .= " OR ec.user_id IN ($user_ids_in_sql)";
-                }
-                $sql_externalized .= ")";
-            } else {
-                $sql_externalized .= " AND ec.user_id IN ($user_ids_in_sql)";
-            }
+            $sql_externalized .= $hasGroupColumn
+                ? " AND ec.group_id = $selected_group_id_sql"
+                : " AND 1 = 0";
             $sql_externalized .= " ORDER BY ec.updated_at DESC, ec.externalized_contents_id DESC";
             if ($result_externalized = $mysqli->query($sql_externalized)) {
                 while ($row = $result_externalized->fetch_assoc()) {
@@ -172,7 +179,25 @@ if (!empty($user_ids_in_latest_group)) {
         }
     }
     $return_data = array_merge($return_data, ['enode' => $organi_map_node]);
+    $knownUserIds = array_map('strval', array_column($users, 'user_id'));
+    $authorIds = array_values(array_unique(array_map('intval', array_column($organi_map_node, 'user_id'))));
+    $missingAuthorIds = array_values(array_filter($authorIds, static function ($id) use ($knownUserIds) {
+        return $id > 0 && !in_array((string)$id, $knownUserIds, true);
+    }));
+    if ($missingAuthorIds) {
+        $authorSql = implode(',', $missingAuthorIds);
+        if ($authorResult = $mysqli->query("SELECT user_id, name FROM users WHERE user_id IN ($authorSql)")) {
+            while ($author = $authorResult->fetch_assoc()) {
+                $users[] = $author;
+            }
+            $authorResult->free();
+        }
+    }
+    $return_data['users'] = $users;
 }
+
+$return_data['users'] = $return_data['users'] ?? [];
+$return_data['enode'] = $return_data['enode'] ?? [];
 
 if (empty($return_data)) {
     echo json_encode(["error" => "not"], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

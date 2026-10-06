@@ -529,7 +529,9 @@ input[type="checkbox"][name="check_organizational"]{
 #shared_combination_overlay .knowledge-fragment-list{
 	flex:1 1 auto;
 	min-height:0;
-	overflow:auto;
+	overflow-x:hidden;
+	overflow-y:auto;
+	overscroll-behavior:contain;
 	padding:10px;
 	resize: vertical;
 }
@@ -559,6 +561,22 @@ input[type="checkbox"][name="check_organizational"]{
 	line-height:1.2;
 	cursor:pointer;
 	color:#4b5563;
+}
+#shared_combination_overlay .kfrag-reload-btn,
+#shared_combination_overlay .discussion-refresh-button{
+	border:1px solid rgba(0,0,0,0.16);
+	background:#fff;
+	border-radius:999px;
+	padding:4px 10px;
+	font-size:18px;
+	line-height:1;
+	cursor:pointer;
+	color:#4b5563;
+}
+#shared_combination_overlay .kfrag-reload-btn:disabled,
+#shared_combination_overlay .discussion-refresh-button:disabled{
+	opacity:.5;
+	cursor:wait;
 }
 #shared_combination_overlay .kfrag-zoom-label{
 	display:inline-flex;
@@ -1344,7 +1362,9 @@ body.is-fragment-canvas-dragging *{
 	padding:8px;
 	max-height: 14vh;
 	min-height:72px;
-	overflow:auto;
+	overflow-y:auto;
+	overscroll-behavior:contain;
+	scrollbar-gutter:stable;
 	background:#fff;
 }
 #shared_combination_overlay .discussion-placeholder{

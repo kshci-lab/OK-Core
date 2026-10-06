@@ -15,7 +15,9 @@ function _dbg($msg){
 _dbg("save_discussion_history called");
 _dbg([ 'REMOTE_ADDR'=>($_SERVER['REMOTE_ADDR']??''), 'REQUEST_METHOD'=>$_SERVER['REQUEST_METHOD'] ?? '' ]);
 
-session_start();
+require_once __DIR__ . '/session_bootstrap.php';
+require_once __DIR__ . '/knowledge_group_access.php';
+hcimlab_start_session();
 require_once __DIR__ . '/connect_db.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -36,7 +38,7 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
 $user_id = isset($_SESSION['USERID']) ? (int)$_SESSION['USERID'] : 0;
 if ($user_id <= 0) {
     http_response_code(401);
-    _dbg('user not logged in or invalid user id: ' . var_export($_SESSION, true));
+    _dbg('user not logged in or invalid user id');
     echo json_encode(['status'=>'error','message'=>'未ログインまたはユーザー不明']);
     exit;
 }
@@ -78,6 +80,24 @@ $fragment_source_type = isset($_POST['fragment_source_type']) ? strtolower(trim(
 if ($fragment_source_type === 'externalized') { $fragment_source_type = 'discussion'; }
 if (!in_array($fragment_source_type, ['experience', 'discussion', 'srl'], true)) {
     $fragment_source_type = ($knowledge_fragment_id !== null && $knowledge_fragment_id !== '') ? 'experience' : '';
+}
+
+$fragmentIds = [];
+foreach (explode(',', (string)$knowledge_fragment_id) as $part) {
+    $part = trim($part);
+    if ($part === '' || !ctype_digit($part) || (int)$part <= 0) {
+        http_response_code(400);
+        echo json_encode(['status'=>'error','message'=>'Invalid fragment ID']);
+        exit;
+    }
+    $fragmentIds[] = (int)$part;
+}
+$fragmentIds = array_values(array_unique($fragmentIds));
+$groupAccess = ok_core_resolve_active_group($mysqli, trim((string)($_POST['group_id'] ?? '')), (string)$user_id);
+if ($groupAccess['status'] !== 200 || !ok_core_group_has_fragments($mysqli, $groupAccess['group_id'], $fragment_source_type, $fragmentIds)) {
+    http_response_code($groupAccess['status'] !== 200 ? $groupAccess['status'] : 403);
+    echo json_encode(['status'=>'error','message'=>'Fragment access denied']);
+    exit;
 }
 
 $table = 'discussion_history';

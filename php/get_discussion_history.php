@@ -2,8 +2,12 @@
 // get_discussion_history.php
 // Returns last N discussion_history rows (default 100) ordered by discussion_history_id ASC
 header('Content-Type: application/json; charset=UTF-8');
-error_reporting(E_ALL); ini_set('display_errors', 1);
+header('Cache-Control: no-store, no-cache, must-revalidate');
+error_reporting(E_ALL); ini_set('display_errors', 0);
 
+require_once __DIR__ . '/session_bootstrap.php';
+require_once __DIR__ . '/knowledge_group_access.php';
+hcimlab_start_session();
 require_once __DIR__ . '/connect_db.php';
 if(!isset($mysqli) || !($mysqli instanceof mysqli)){
   http_response_code(500);
@@ -31,6 +35,23 @@ if ($fragmentRaw !== '') {
     if ($v > 0) $fragmentIds[] = $v;
   }
   $fragmentIds = array_values(array_unique($fragmentIds));
+}
+
+$userId = isset($_SESSION['USERID']) ? (string)$_SESSION['USERID'] : '';
+$groupAccess = ok_core_resolve_active_group($mysqli, trim((string)($_GET['group_id'] ?? '')), $userId);
+if ($groupAccess['status'] !== 200) {
+  http_response_code($groupAccess['status']);
+  echo json_encode(['status'=>'error','message'=>'Group access denied']);
+  exit;
+}
+if (!$fragmentIds) {
+  echo json_encode(['status'=>'ok','items'=>[]]);
+  exit;
+}
+if (!ok_core_group_has_fragments($mysqli, $groupAccess['group_id'], $fragmentSourceType, $fragmentIds)) {
+  http_response_code(403);
+  echo json_encode(['status'=>'error','message'=>'Fragment access denied']);
+  exit;
 }
 
 $table = 'discussion_history';

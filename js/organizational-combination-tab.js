@@ -19,6 +19,9 @@
     }
   };
   var kfragRelationVisible = false;
+  var DISCUSSION_POLL_INTERVAL_MS = 5000;
+  var _discussionPollTimer = null;
+  var _discussionRequestSerial = 0;
   var KFRAG_VIEW_STORAGE_KEY = 'ok_core_combination_kfrag_view_mode';
   var KFRAG_ZOOM_STORAGE_KEY = 'ok_core_combination_kfrag_canvas_zoom';
 
@@ -182,7 +185,14 @@
     });
 
     if(activeId === 'org-tab-combination'){
+      var wasInitialized = _combinationInited;
       try{ initCombinationOverlay(); }catch(e){ /* no-op */ }
+      if(wasInitialized){
+        var combinationWorkspace = document.getElementById('knowledge_fragments_workspace');
+        reloadFragmentsForGroup(combinationWorkspace);
+        loadKnowledgeTree();
+      }
+      startDiscussionPolling();
       bindSourceFilters();
       applyFragmentSourceFilter();
       applyKnowledgeTreeSourceFilter();
@@ -212,7 +222,6 @@
 
     bindDiscussedControls();
     bindKnowledgeRegister();
-    loadKnowledgeTree();
     bindKnowledgeTreeContextMenu();
     bindKnowledgeTreeAddNode();
     bindGroupSelectSync(workspace);
@@ -220,10 +229,6 @@
     bindSourceFilters();
     applyFragmentSourceFilter();
     applyKnowledgeTreeSourceFilter();
-    autoRestoreUnderwayTargets(workspace, function(){
-      // Whether restored or not, load discussion once with the current selection state.
-      loadDiscussion();
-    });
   }
 
   function getKfragViewMode(){
@@ -315,6 +320,14 @@
     zoomGroup.appendChild(zoomLabel);
     zoomGroup.appendChild(zoomInBtn);
     zoomGroup.appendChild(zoomResetBtn);
+
+    var reloadBtn = document.createElement('button');
+    reloadBtn.type = 'button';
+    reloadBtn.className = 'kfrag-reload-btn';
+    reloadBtn.setAttribute('aria-label', 'KF一覧を再読み込み');
+    reloadBtn.setAttribute('title', 'KF一覧を再読み込み');
+    reloadBtn.innerHTML = '<span aria-hidden="true">&#8635;</span>';
+    zoomGroup.appendChild(reloadBtn);
     group.appendChild(zoomGroup);
 
     var relationBtn = document.createElement('button');
@@ -341,6 +354,17 @@
       else if(action === 'out') next = Math.max(0.5, Math.round((current - 0.1) * 10) / 10);
       else next = 1;
       applyKfragCanvasZoom(workspace, next, true);
+    }, false);
+
+    reloadBtn.addEventListener('click', function(){
+      if(reloadBtn.disabled) return;
+      reloadBtn.disabled = true;
+      reloadBtn.classList.add('is-loading');
+      reloadFragmentsForGroup(workspace, function(){
+        reloadBtn.disabled = false;
+        reloadBtn.classList.remove('is-loading');
+      });
+      loadKnowledgeTree();
     }, false);
   }
 
@@ -679,16 +703,31 @@
     }
   }
 
+  var fragmentReloadVersion = 0;
+  var knowledgeDetailRequestVersion = 0;
   function reloadFragmentsForGroup(workspace, done){
     if(!workspace){ if(done) done(false); return; }
+    var requestVersion = ++fragmentReloadVersion;
     var gid = getSelectedGroupId();
     var url = 'php/get_knowledge_fragments_by_group.php';
     if(gid) url += '?group_id=' + encodeURIComponent(gid);
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
+    xhr.timeout = 15000;
+    var completed = false;
+    function complete(ok){
+      if(completed) return;
+      completed = true;
+      if(done) done(!!ok);
+    }
     xhr.onreadystatechange = function(){
       if(xhr.readyState !== 4) return;
-      if(xhr.status !== 200){ if(done) done(false); return; }
+      if(requestVersion !== fragmentReloadVersion || getSelectedGroupId() !== gid){ complete(false); return; }
+      if(xhr.status !== 200){
+        replaceFragmentListHTML(workspace, '<div class="knowledge-fragment-list"><div class="no-fragment-note">KF一覧を読み込めませんでした。</div></div>');
+        complete(false);
+        return;
+      }
       replaceFragmentListHTML(workspace, xhr.responseText || '');
       // Reset undo/redo history when the list changes
       try{ _kfragUndo.length = 0; _kfragRedo.length = 0; updateKfragButtons(); }catch(_){ }
@@ -698,8 +737,10 @@
       applyFragmentSourceFilter();
       clearFragmentSelectionState(workspace);
       loadDiscussion();
-      if(done) done(true);
+      complete(true);
     };
+    xhr.onerror = function(){ complete(false); };
+    xhr.ontimeout = function(){ complete(false); };
     xhr.send(null);
   }
 
@@ -707,16 +748,29 @@
     var sel = document.getElementById('group_select');
     if(!sel || sel.__combBound) return;
     sel.__combBound = true;
-    sel.addEventListener('change', function(){
-      reloadFragmentsForGroup(workspace);
+    var initialRestorePending = true;
+    function refresh(){
+      knowledgeDetailRequestVersion++;
+      var detailOverlay = document.getElementById('knowledge-detail-overlay-tab');
+      if(detailOverlay){
+        detailOverlay.style.display = 'none';
+        detailOverlay.setAttribute('aria-hidden', 'true');
+      }
+      reloadFragmentsForGroup(workspace, function(ok){
+        if(!initialRestorePending || !ok) return;
+        initialRestorePending = false;
+        autoRestoreUnderwayTargets(workspace, function(){ loadDiscussion(); });
+      });
       loadKnowledgeTree();
+    }
+    sel.addEventListener('change', function(){
+      refresh();
     }, false);
     document.addEventListener('organizationalGroupChanged', function(){
-      reloadFragmentsForGroup(workspace);
-      loadKnowledgeTree();
+      refresh();
     }, false);
     // Also refresh once on init so the fragment list matches the latest group selection behavior.
-    reloadFragmentsForGroup(workspace);
+    refresh();
   }
 
   // ---------------------------------------------------------------------------
@@ -1951,16 +2005,22 @@
   function loadKnowledgeTree(){
     var el = document.getElementById('overlay_knowledge_tree');
     if(!el) return;
-    el.textContent = '読み込み中...';
-
     var gid = getSelectedGroupId();
+    loadKnowledgeTree.requestVersion = (loadKnowledgeTree.requestVersion || 0) + 1;
+    var requestVersion = loadKnowledgeTree.requestVersion;
+    if(!gid){
+      el.textContent = '表示できる組織がありません。';
+      return;
+    }
+    el.textContent = '読み込み中...';
     var url = 'php/get_knowledge_tree.php';
-    if(gid) url += '?group_id=' + encodeURIComponent(gid);
+    url += '?group_id=' + encodeURIComponent(gid);
 
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.onreadystatechange = function(){
       if(xhr.readyState !== 4) return;
+      if(requestVersion !== loadKnowledgeTree.requestVersion || String(getSelectedGroupId()) !== String(gid)) return;
       if(xhr.status !== 200){
         el.textContent = '読み込みに失敗しました';
         return;
@@ -2322,6 +2382,8 @@
 
       var nodeId = nodeEl.getAttribute('data-node-id') || '';
       var fragmentIds = nodeEl.getAttribute('data-kfrag-id') || '';
+      var groupId = getSelectedGroupId();
+      var requestVersion = ++knowledgeDetailRequestVersion;
       var titleEl = qs('.kt-node-title, .kt-content-title', nodeEl);
       var title = titleEl ? (titleEl.textContent || '').trim() : '';
 
@@ -2335,9 +2397,11 @@
         dataType: 'html',
         data: {
           node_id: nodeId,
-          fragment_ids: fragmentIds
+          fragment_ids: fragmentIds,
+          group_id: groupId
         }
       }).done(function(html){
+        if(requestVersion !== knowledgeDetailRequestVersion || getSelectedGroupId() !== groupId) return;
         content.innerHTML = '';
         if(title){
           var heading = document.createElement('div');
@@ -2350,6 +2414,7 @@
         body.innerHTML = html || '<div class="knowledge-detail-empty">詳細情報がありません。</div>';
         content.appendChild(body);
       }).fail(function(xhr){
+        if(requestVersion !== knowledgeDetailRequestVersion || getSelectedGroupId() !== groupId) return;
         var message = '詳細情報の取得に失敗しました。';
         if(xhr && xhr.responseText){
           try{
@@ -2993,6 +3058,9 @@
     var list = document.getElementById('discussion_message_list');
     if(!form || !input || !list) return;
 
+    var refreshButton = document.getElementById('discussion-refresh-button');
+    if(refreshButton) refreshButton.addEventListener('click', function(){ loadDiscussion({ force: true }); }, false);
+
     form.addEventListener('submit', function(){
       var text = input.value.trim();
       if(!text) return;
@@ -3006,6 +3074,7 @@
       fd.append('content', text);
       fd.append('knowledge_fragment_id', ids.join(','));
       fd.append('fragment_source_type', sourceType);
+      fd.append('group_id', getSelectedGroupId());
       var xhr = new XMLHttpRequest();
       xhr.open('POST', 'php/save_discussion_history.php', true);
       xhr.onreadystatechange = function(){
@@ -3021,19 +3090,40 @@
           return;
         }
         input.value = '';
-        loadDiscussion();
+        loadDiscussion({ force: true, forceScroll: true });
       };
       xhr.send(fd);
     }, false);
   }
 
-  function loadDiscussion(){
+  function isCombinationDiscussionVisible(){
+    var tab = document.getElementById('org-tab-combination');
+    return !!(tab && tab.classList.contains('is-active') && !document.hidden);
+  }
+
+  function startDiscussionPolling(){
+    if(_discussionPollTimer) return;
+    _discussionPollTimer = window.setInterval(function(){
+      if(isCombinationDiscussionVisible() && getSelectedFragmentSourceIds().length){
+        loadDiscussion({ silent: true });
+      }
+    }, DISCUSSION_POLL_INTERVAL_MS);
+  }
+
+  function loadDiscussion(options){
+    options = options || {};
     var list = document.getElementById('discussion_message_list');
     var form = document.getElementById('discussion_post_form');
+    var refreshButton = document.getElementById('discussion-refresh-button');
     if(!list) return;
     var sourceType = getActiveFragmentSourceType() || 'experience';
     var ids = getSelectedFragmentSourceIds();
+    var groupId = getSelectedGroupId();
+    var selectionKey = [groupId, sourceType, ids.join(',')].join(':');
+    var requestSerial = ++_discussionRequestSerial;
     if(ids.length === 0){
+      list.removeAttribute('data-discussion-signature');
+      list.removeAttribute('data-discussion-selection');
       // No selection -> placeholder + hide form
       list.innerHTML = '';
       var ph = document.createElement('div');
@@ -3045,26 +3135,36 @@
       return;
     }
     if(form) form.style.display = 'block';
-    list.textContent = '読み込み中...';
+    if(!options.silent && !list.hasAttribute('data-discussion-selection')) list.textContent = '読み込み中...';
+    if(refreshButton) refreshButton.disabled = true;
 
     var url = 'php/get_discussion_history.php?limit=200';
     url += '&fragment_id=' + encodeURIComponent(ids.join(','));
     url += '&fragment_source_type=' + encodeURIComponent(sourceType);
+    url += '&group_id=' + encodeURIComponent(groupId);
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.onreadystatechange = function(){
       if(xhr.readyState !== 4) return;
+      if(refreshButton) refreshButton.disabled = false;
+      if(requestSerial !== _discussionRequestSerial || selectionKey !== [getSelectedGroupId(), getActiveFragmentSourceType() || 'experience', getSelectedFragmentSourceIds().join(',')].join(':')) return;
       if(xhr.status !== 200){
-        list.textContent = '読み込みに失敗しました';
+        if(!options.silent) list.textContent = '読み込みに失敗しました';
         return;
       }
       var data = null;
       try{ data = JSON.parse(xhr.responseText || '{}'); }catch(e){ data = null; }
       if(!data || data.status !== 'ok' || !Array.isArray(data.items)){
-        list.textContent = 'データ形式が不正です';
+        if(!options.silent) list.textContent = 'データ形式が不正です';
         return;
       }
+      var signature = JSON.stringify(data.items);
+      if(list.getAttribute('data-discussion-selection') === selectionKey && list.getAttribute('data-discussion-signature') === signature) return;
+      var nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 48;
+      var oldScrollTop = list.scrollTop;
       list.innerHTML = '';
+      list.setAttribute('data-discussion-selection', selectionKey);
+      list.setAttribute('data-discussion-signature', signature);
       if(data.items.length === 0){
         var empty2 = document.createElement('div');
         empty2.className = 'discussion-placeholder';
@@ -3092,7 +3192,7 @@
         }
         list.appendChild(card);
       });
-      try{ list.scrollTop = list.scrollHeight; }catch(e){}
+      try{ list.scrollTop = (options.forceScroll || nearBottom) ? list.scrollHeight : oldScrollTop; }catch(e){}
     };
     xhr.send(null);
   }
