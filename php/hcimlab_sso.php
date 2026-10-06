@@ -3,6 +3,8 @@
 use GuzzleHttp\Client;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
+use League\OAuth2\Client\OptionProvider\HttpBasicAuthOptionProvider;
+use League\OAuth2\Client\OptionProvider\PostAuthOptionProvider;
 use League\OAuth2\Client\Provider\GenericProvider;
 
 function hcimlab_sso_config()
@@ -12,6 +14,211 @@ function hcimlab_sso_config()
         $config = require __DIR__ . '/sso_config.php';
     }
     return $config;
+}
+
+function hcimlab_sso_value_is_placeholder($value)
+{
+    $value = trim((string)$value);
+    if ($value === '') {
+        return true;
+    }
+
+    $placeholders = array(
+        'your-ok-core-client-id',
+        'your-ok-core-client-secret',
+        'change-me',
+        'replace-me',
+    );
+
+    return in_array($value, $placeholders, true);
+}
+
+function hcimlab_sso_is_oauth_configured()
+{
+    $config = hcimlab_sso_config();
+    if (empty($config['client_id']) || empty($config['client_secret'])) {
+        return false;
+    }
+
+    if (hcimlab_sso_value_is_placeholder($config['client_id'])) {
+        return false;
+    }
+
+    if (hcimlab_sso_value_is_placeholder($config['client_secret'])) {
+        return false;
+    }
+
+    return true;
+}
+
+function hcimlab_sso_default_client_url()
+{
+    $config = hcimlab_sso_config();
+    return rtrim($config['base_url'], '/');
+}
+
+function hcimlab_sso_detect_client_url()
+{
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443);
+    $scheme = $https ? 'https' : 'http';
+    $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+    if ($host === '') {
+        return hcimlab_sso_default_client_url();
+    }
+
+    $script = isset($_SERVER['SCRIPT_NAME']) ? str_replace('\\', '/', $_SERVER['SCRIPT_NAME']) : '';
+    $basePath = '';
+    if ($script !== '') {
+        $basePath = rtrim(dirname($script), '/\\');
+        if ($basePath === '/' || $basePath === '\\' || $basePath === '.') {
+            $basePath = '';
+        }
+    }
+
+    return rtrim($scheme . '://' . $host . $basePath, '/');
+}
+
+function hcimlab_sso_is_safe_return_url($url)
+{
+    $url = trim((string)$url);
+    if ($url === '') {
+        return false;
+    }
+
+    $parts = parse_url($url);
+    if (!is_array($parts)) {
+        return false;
+    }
+
+    if (empty($parts['scheme']) || empty($parts['host'])) {
+        return false;
+    }
+
+    if (!in_array(strtolower($parts['scheme']), array('http', 'https'), true)) {
+        return false;
+    }
+
+    $current = parse_url(hcimlab_sso_detect_client_url());
+    if (!is_array($current) || empty($current['host'])) {
+        return false;
+    }
+
+    $allowedHosts = array(
+        strtolower((string)$current['host']),
+        'localhost',
+        '127.0.0.1',
+        '::1',
+    );
+    $allowedHosts = array_values(array_unique(array_filter($allowedHosts, 'strlen')));
+
+    $currentPort = isset($current['port']) ? (string)$current['port'] : '';
+    $urlPort = isset($parts['port']) ? (string)$parts['port'] : '';
+    $urlPath = isset($parts['path']) ? rtrim($parts['path'], '/') : '';
+
+    return in_array(strtolower($parts['host']), $allowedHosts, true)
+        && $currentPort === $urlPort
+        && strpos($urlPath, '/OK-Core') === 0;
+}
+
+function hcimlab_sso_resolve_client_url($fallback = null)
+{
+    $config = hcimlab_sso_config();
+    $fallback = $fallback !== null ? $fallback : hcimlab_sso_default_client_url();
+
+    if (!empty($_SESSION['HCIMLAB_SSO_CLIENT_URL']) && hcimlab_sso_is_safe_return_url($_SESSION['HCIMLAB_SSO_CLIENT_URL'])) {
+        return rtrim((string)$_SESSION['HCIMLAB_SSO_CLIENT_URL'], '/');
+    }
+
+    if (!empty($_GET['clientUrl']) && hcimlab_sso_is_safe_return_url($_GET['clientUrl'])) {
+        return rtrim((string)$_GET['clientUrl'], '/');
+    }
+
+    if (!empty($_SERVER['HTTP_ORIGIN']) && hcimlab_sso_is_safe_return_url($_SERVER['HTTP_ORIGIN'])) {
+        return rtrim((string)$_SERVER['HTTP_ORIGIN'], '/');
+    }
+
+    if (!empty($_SERVER['HTTP_REFERER']) && hcimlab_sso_is_safe_return_url($_SERVER['HTTP_REFERER'])) {
+        return rtrim((string)$_SERVER['HTTP_REFERER'], '/');
+    }
+
+    return rtrim($fallback, '/');
+}
+
+function hcimlab_sso_login_as_dev(array $config = array())
+{
+    if (empty($config)) {
+        $config = hcimlab_sso_config();
+    }
+
+    if (empty($config['dev_auth'])) {
+        throw new RuntimeException('Development login is disabled.');
+    }
+
+    session_regenerate_id(true);
+
+    $userId = isset($config['dev_user_id']) ? (int)$config['dev_user_id'] : 10001;
+    $userName = isset($config['dev_user_name']) ? (string)$config['dev_user_name'] : 'Local Dev User';
+    $userSub = isset($config['dev_user_sub']) ? (string)$config['dev_user_sub'] : 'local-dev-user';
+
+    $_SESSION['USERNAME'] = $userName;
+    $_SESSION['USERID'] = $userId;
+    $_SESSION['HCIMLAB_SSO_SUB'] = $userSub;
+    $_SESSION['HCIMLAB_SSO_CLAIMS'] = array(
+        'sub' => $userSub,
+        'name' => $userName,
+        'preferred_username' => $userName,
+        'email' => '',
+        'dev_auth' => true,
+    );
+    $_SESSION['HCIMLAB_SSO_ACCESS_TOKEN'] = 'dev';
+    $_SESSION['HCIMLAB_SSO_REFRESH_TOKEN'] = null;
+    $_SESSION['HCIMLAB_SSO_TOKEN_EXPIRES'] = time() + 86400;
+    unset($_SESSION['SSO_ERROR']);
+
+    return hcimlab_sso_resolve_client_url();
+}
+
+function hcimlab_sso_token_auth_method($override = null)
+{
+    if ($override !== null && $override !== '') {
+        return strtolower((string)$override);
+    }
+
+    $config = hcimlab_sso_config();
+    return strtolower(isset($config['token_auth_method']) ? (string)$config['token_auth_method'] : 'auto');
+}
+
+function hcimlab_sso_create_provider($tokenAuthMethod = null)
+{
+    hcimlab_sso_require_dependencies();
+    $config = hcimlab_sso_config();
+    if ($config['client_id'] === '') {
+        throw new RuntimeException('HCIMLAB_SSO_CLIENT_ID is not configured.');
+    }
+
+    $metadata = hcimlab_sso_discovery();
+    $authMethod = hcimlab_sso_token_auth_method($tokenAuthMethod);
+    $optionProvider = ($authMethod === 'basic')
+        ? new HttpBasicAuthOptionProvider()
+        : new PostAuthOptionProvider();
+
+    return new GenericProvider(
+        array(
+            'clientId' => $config['client_id'],
+            'clientSecret' => $config['client_secret'],
+            'redirectUri' => $config['redirect_uri'],
+            'urlAuthorize' => $metadata['authorization_endpoint'],
+            'urlAccessToken' => $metadata['token_endpoint'],
+            'urlResourceOwnerDetails' => $metadata['userinfo_endpoint'],
+            'scopes' => $config['scope'],
+            'pkceMethod' => 'S256',
+        ),
+        array(
+            'httpClient' => hcimlab_sso_http_client(),
+            'optionProvider' => $optionProvider,
+        )
+    );
 }
 
 function hcimlab_sso_require_dependencies()
@@ -93,28 +300,7 @@ function hcimlab_sso_discovery()
 
 function hcimlab_sso_provider()
 {
-    hcimlab_sso_require_dependencies();
-    $config = hcimlab_sso_config();
-    if ($config['client_id'] === '') {
-        throw new RuntimeException('HCIMLAB_SSO_CLIENT_ID is not configured.');
-    }
-
-    $metadata = hcimlab_sso_discovery();
-    return new GenericProvider(
-        array(
-            'clientId' => $config['client_id'],
-            'clientSecret' => $config['client_secret'],
-            'redirectUri' => $config['redirect_uri'],
-            'urlAuthorize' => $metadata['authorization_endpoint'],
-            'urlAccessToken' => $metadata['token_endpoint'],
-            'urlResourceOwnerDetails' => $metadata['userinfo_endpoint'],
-            'scopes' => $config['scope'],
-            'pkceMethod' => 'S256',
-        ),
-        array(
-            'httpClient' => hcimlab_sso_http_client(),
-        )
-    );
+    return hcimlab_sso_create_provider();
 }
 
 function hcimlab_sso_verify_id_token($idToken, $expectedNonce)

@@ -43,6 +43,7 @@ $config = array(
     'base_url' => rtrim($baseUrl, '/'),
     'redirect_uri' => hcimlab_sso_env_or_default('HCIMLAB_SSO_REDIRECT_URI', rtrim($baseUrl, '/') . '/auth/callback'),
     'scope' => hcimlab_sso_env_or_default('HCIMLAB_SSO_SCOPE', 'openid profile email lab'),
+    'token_auth_method' => hcimlab_sso_env_or_default('HCIMLAB_SSO_TOKEN_AUTH_METHOD', 'auto'),
     'ca_bundle' => hcimlab_sso_env_or_default('HCIMLAB_SSO_CA_BUNDLE', hcimlab_sso_default_ca_bundle()),
 );
 
@@ -53,5 +54,17 @@ if (file_exists($localConfigPath)) {
         $config = array_merge($config, $localConfig);
     }
 }
+
+// Development-only helpers must never be enabled accidentally in production.
+// APP_ENV=production is the deployment switch used by the AWS environment.
+$appEnvironment = strtolower(trim((string)hcimlab_sso_env_or_default('APP_ENV', 'local')));
+$devAuthOverride = getenv('HCIMLAB_SSO_DEV_AUTH');
+if ($devAuthOverride !== false && $devAuthOverride !== '') {
+    $config['dev_auth'] = in_array(strtolower(trim((string)$devAuthOverride)), array('1', 'true', 'yes', 'on'), true);
+} elseif ($appEnvironment === 'production') {
+    $config['dev_auth'] = false;
+}
+
+$config['environment'] = $appEnvironment;
 
 return $config;

@@ -1,17 +1,25 @@
 <?php
 // 議論内省マップのデータを読み出すための処理群
 
-session_start();
-require("connect_db.php");
+require_once __DIR__ . '/session_bootstrap.php';
+hcimlab_start_session();
+require_once __DIR__ . '/connect_db.php';
+
+header('Content-Type: application/json; charset=utf-8');
 
 // POSTデータの受け取り
-$user_id = $_SESSION['USERID'];      //ユーザID
-$map_id = $_SESSION['MAPID'];    //マップID
+$user_id = isset($_SESSION['USERID']) ? $_SESSION['USERID'] : null;      //ユーザID
+$map_id = isset($_SESSION['MAPID']) ? $_SESSION['MAPID'] : null;    //マップID
 
 //all...初期読み込み
 // group...選択されたグループへ再表示
-$mode = $_POST['mode']; 
-$group_id_latest =  $_POST['group_id'];
+$mode = isset($_POST['mode']) ? (string)$_POST['mode'] : '';
+$group_id_latest = isset($_POST['group_id']) ? (string)$_POST['group_id'] : '';
+
+if ($user_id === null) {
+    echo json_encode(['error' => 'not_logged_in'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
 
 $return_data = []; // DBアクセスの結果として返すキー・バリューのペア
 
@@ -125,6 +133,11 @@ if (!empty($user_ids_in_latest_group)) {
         $hasExternalized = ($resT->num_rows > 0);
         $resT->free();
         if ($hasExternalized) {
+            $hasGroupColumn = false;
+            if ($resCol = $mysqli->query("SHOW COLUMNS FROM `externalized_contents` LIKE 'group_id'")) {
+                $hasGroupColumn = ($resCol->num_rows > 0);
+                $resCol->free();
+            }
             $contentCol = 'knowledge_fragment_content';
             if ($resCol = $mysqli->query("SHOW COLUMNS FROM `externalized_contents` LIKE 'knowledge_fragments_content'")) {
                 if ($resCol->num_rows > 0) { $contentCol = 'knowledge_fragments_content'; }
@@ -132,11 +145,19 @@ if (!empty($user_ids_in_latest_group)) {
             }
             $sql_externalized = "SELECT ec.externalized_contents_id, ec.user_id, ec.selected_contents, ec.`{$contentCol}` AS knowledge_fragment_content, ec.stage1, ec.stage2, ec.stage3, ec.updated_at
                 FROM externalized_contents ec
-                WHERE ec.user_id IN ($user_ids_in_sql)
-                    AND ec.deleted = 0
+                WHERE ec.deleted = 0
                     AND ec.`{$contentCol}` IS NOT NULL
-                    AND LENGTH(TRIM(ec.`{$contentCol}`)) > 0
-                ORDER BY ec.updated_at DESC, ec.externalized_contents_id DESC";
+                    AND LENGTH(TRIM(ec.`{$contentCol}`)) > 0";
+            if ($hasGroupColumn && $selected_group_id_sql > 0) {
+                $sql_externalized .= " AND (ec.group_id = $selected_group_id_sql";
+                if (!empty($user_ids_in_sql)) {
+                    $sql_externalized .= " OR ec.user_id IN ($user_ids_in_sql)";
+                }
+                $sql_externalized .= ")";
+            } else {
+                $sql_externalized .= " AND ec.user_id IN ($user_ids_in_sql)";
+            }
+            $sql_externalized .= " ORDER BY ec.updated_at DESC, ec.externalized_contents_id DESC";
             if ($result_externalized = $mysqli->query($sql_externalized)) {
                 while ($row = $result_externalized->fetch_assoc()) {
                     $row['source_type'] = 'discussion';
@@ -154,11 +175,11 @@ if (!empty($user_ids_in_latest_group)) {
 }
 
 if (empty($return_data)) {
-    echo json_encode(["error" => "not"]);
+    echo json_encode(["error" => "not"], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return;
 } else {
     $return_data['current_user_id'] = $user_id;
-    echo json_encode($return_data);
+    echo json_encode($return_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return;
 }
 
