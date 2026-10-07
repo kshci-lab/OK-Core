@@ -306,22 +306,18 @@ if (!empty($__kfrag_list)) {
       }
       $idsForOrder = [];
       foreach ($__kfrag_list as $item) {
-        if (!isset($item['source_type']) || $item['source_type'] !== 'experience') { continue; }
         $idForOrder = isset($item['source_id']) ? intval($item['source_id'], 10) : 0;
         if ($idForOrder > 0) { $idsForOrder[] = $idForOrder; }
       }
       $idsForOrder = array_values(array_unique($idsForOrder));
       if ($idsForOrder) {
         $in = implode(',', array_map('intval', $idsForOrder));
-        if ($hasGroupIdInPositions) {
-          $groupWhere = ($group_id > 0) ? " AND group_id IN (0,".intval($group_id).")" : " AND group_id = 0";
-          $sqlPos = "SELECT externalized_contents_id, group_id, pos_x, pos_y FROM knowledge_fragment_positions WHERE externalized_contents_id IN ($in)$groupWhere ORDER BY group_id ASC";
-        } else {
-          $sqlPos = "SELECT externalized_contents_id, 0 AS group_id, pos_x, pos_y FROM knowledge_fragment_positions WHERE externalized_contents_id IN ($in)";
-        }
+        $sqlPos = "SELECT fragment_source_type, fragment_source_id, pos_x, pos_y
+                   FROM knowledge_fragment_positions
+                   WHERE group_id = ".intval($group_id)." AND fragment_source_id IN ($in)";
         if ($resO = $mysqli->query($sqlPos)) {
           while ($rowO = $resO->fetch_assoc()) {
-            $posId = intval($rowO['externalized_contents_id'], 10);
+            $posId = (string)$rowO['fragment_source_type'].':'.intval($rowO['fragment_source_id'], 10);
             $orderMap[$posId] = floatval($rowO['pos_y']);
             $canvasMap[$posId] = [
               'x' => isset($rowO['pos_x']) ? floatval($rowO['pos_x']) : 0.0,
@@ -336,13 +332,12 @@ if (!empty($__kfrag_list)) {
   if (!empty($orderMap)) {
     $indexMap = [];
     foreach ($__kfrag_list as $idx => $item) {
-      if (!isset($item['source_type']) || $item['source_type'] !== 'experience') { continue; }
-      $idForIndex = isset($item['source_id']) ? intval($item['source_id'], 10) : 0;
-      if ($idForIndex > 0) { $indexMap[$idForIndex] = $idx; }
+      $key = (string)($item['source_type'] ?? 'experience').':'.intval($item['source_id'] ?? 0, 10);
+      $indexMap[$key] = $idx;
     }
     usort($__kfrag_list, function($a, $b) use ($orderMap, $indexMap) {
-      $aid = (isset($a['source_type']) && $a['source_type'] === 'experience' && isset($a['source_id'])) ? intval($a['source_id'], 10) : 0;
-      $bid = (isset($b['source_type']) && $b['source_type'] === 'experience' && isset($b['source_id'])) ? intval($b['source_id'], 10) : 0;
+      $aid = (string)($a['source_type'] ?? 'experience').':'.intval($a['source_id'] ?? 0, 10);
+      $bid = (string)($b['source_type'] ?? 'experience').':'.intval($b['source_id'] ?? 0, 10);
       $ap = array_key_exists($aid, $orderMap) ? $orderMap[$aid] : PHP_INT_MAX;
       $bp = array_key_exists($bid, $orderMap) ? $orderMap[$bid] : PHP_INT_MAX;
       if ($ap == $bp) {
@@ -378,9 +373,10 @@ $mysqli->close();
       $sourceType = isset($__kfrag_raw['source_type']) ? (string)$__kfrag_raw['source_type'] : 'experience';
       $sourceId = isset($__kfrag_raw['source_id']) ? intval($__kfrag_raw['source_id'],10) : 0;
       if($sourceId>0){ echo ' data-source-id="'.$sourceId.'"'; }
-      if($sourceType === 'experience' && $sourceId>0 && isset($canvasMap) && isset($canvasMap[$sourceId])){
-        echo ' data-canvas-x="'.htmlspecialchars((string)$canvasMap[$sourceId]['x'], ENT_QUOTES, 'UTF-8').'"';
-        echo ' data-canvas-y="'.htmlspecialchars((string)$canvasMap[$sourceId]['y'], ENT_QUOTES, 'UTF-8').'"';
+      $positionKey = $sourceType.':'.$sourceId;
+      if($sourceId>0 && isset($canvasMap) && isset($canvasMap[$positionKey])){
+        echo ' data-canvas-x="'.htmlspecialchars((string)$canvasMap[$positionKey]['x'], ENT_QUOTES, 'UTF-8').'"';
+        echo ' data-canvas-y="'.htmlspecialchars((string)$canvasMap[$positionKey]['y'], ENT_QUOTES, 'UTF-8').'"';
       }
     ?>>
       <div class="fragment-number-badge" aria-hidden="true"><?php echo intval($num,10); ?></div>

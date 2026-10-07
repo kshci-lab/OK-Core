@@ -1140,7 +1140,7 @@
     });
     if(!underway){ if(done) done(false); return; }
 
-    var fid = underway.getAttribute('data-ext-id');
+    var fid = underway.getAttribute('data-source-id') || underway.getAttribute('data-ext-id');
     if(!fid){ if(done) done(false); return; }
 
     // Make it the active primary selection.
@@ -1150,6 +1150,7 @@
     underway.classList.add('is-selected');
     setActiveFragment(fid, {
       discussed: 'UNDERWAY',
+      sourceType: underway.getAttribute('data-source-type') || 'experience',
       title: (qs('.card-body', underway) ? qs('.card-body', underway).textContent.trim() : null)
     });
     updateAdditionalHighlight(workspace);
@@ -1310,10 +1311,12 @@
   function getCanvasPositions(workspace){
     var out = [];
     qsa('.fragment-node-wrapper', workspace).forEach(function(w){
-      var id = w.getAttribute('data-ext-id');
+      var id = w.getAttribute('data-source-id');
+      var sourceType = w.getAttribute('data-source-type') || 'experience';
       if(!id) return;
       out.push({
-        id: id,
+        source_type: sourceType,
+        source_id: id,
         x: parseFloat(w.getAttribute('data-canvas-x') || w.style.left || '0') || 0,
         y: parseFloat(w.getAttribute('data-canvas-y') || w.style.top || '0') || 0
       });
@@ -1323,9 +1326,9 @@
 
   function getFragmentOrder(workspace){
     return qsa('.fragment-node-wrapper', workspace).map(function(w){
-      return w.getAttribute('data-ext-id') || '';
-    }).filter(function(id){
-      return String(id).trim() !== '';
+      return { source_type: w.getAttribute('data-source-type') || 'experience', source_id: w.getAttribute('data-source-id') || '' };
+    }).filter(function(item){
+      return String(item.source_id).trim() !== '';
     });
   }
 
@@ -1795,7 +1798,7 @@
         if(card.parentNode) card.parentNode.insertBefore(wrap, card);
         wrap.appendChild(card);
       }
-      if(extId){ wrap.setAttribute('data-ext-id', extId); }
+      if(sourceId){ wrap.setAttribute('data-ext-id', (card.getAttribute('data-source-type') || wrap.getAttribute('data-source-type') || 'experience') + ':' + sourceId); }
       if(sourceId){ wrap.setAttribute('data-source-id', sourceId); }
       if(!wrap.getAttribute('data-source-type')){ wrap.setAttribute('data-source-type', card.getAttribute('data-source-type') || 'experience'); }
       if(!card.getAttribute('data-source-type')){ card.setAttribute('data-source-type', wrap.getAttribute('data-source-type') || 'experience'); }

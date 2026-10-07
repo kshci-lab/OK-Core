@@ -1832,25 +1832,9 @@ function showOrganizationalMap(){
 function closeOthersThinkingProcessMap(){
   
     $('#process_others_network_container').css('display','none');
-    // restore previous height if we pinned it during split view
-    var prevH = null;
-    try{
-        var oc = document.getElementById('organizational_container');
-        if(oc && oc.dataset && oc.dataset.prevHeight){
-            prevH = parseFloat(oc.dataset.prevHeight);
-            delete oc.dataset.prevHeight;
-        }
-    }catch(_){ prevH = null; }
-    $('#organizational_container').css({
-        'display':'block',
-        'width':'calc(100vw - 350px)',
-        'height': (prevH && !isNaN(prevH) && prevH > 0) ? (Math.round(prevH) + 'px') : '100%',
-        'flex':'none'
-    });
-    $('#myOrganizationalnetwork_area').css({
-        'height':'100%',
-        'flex':'none'
-    });
+    // Remove layout overrides from the former split view so the map fills its panel again.
+    $('#organizational_container').css({ display: '', width: '', height: '', flex: '' });
+    $('#myOrganizationalnetwork_area').css({ height: '', flex: '' });
     // スプリッターがあれば削除
     const splitter = document.querySelector('.organizational-splitter');
     if(splitter) splitter.remove();

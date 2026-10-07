@@ -1,131 +1,86 @@
 <?php
+declare(strict_types=1);
 header('Content-Type: application/json; charset=UTF-8');
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
-mysqli_report(MYSQLI_REPORT_OFF);
-
+ini_set('display_errors', '0');
+require_once __DIR__ . '/session_bootstrap.php';
+require_once __DIR__ . '/knowledge_group_access.php';
+hcimlab_start_session();
 require_once __DIR__ . '/connect_db.php';
-mysqli_report(MYSQLI_REPORT_OFF);
 
-function respond_json($status, $payload = []) {
-  echo json_encode(array_merge(['status' => $status], $payload), JSON_UNESCAPED_UNICODE);
-  exit;
+function position_reply(int $code, string $status, string $message, array $extra = []): void {
+    http_response_code($code);
+    echo json_encode(array_merge(['status'=>$status,'message'=>$message], $extra), JSON_UNESCAPED_UNICODE);
+    exit;
 }
-
-if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
-  respond_json('error', ['message' => 'DB connection failed']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') position_reply(405, 'error', 'Method Not Allowed');
+if (!isset($mysqli) || !($mysqli instanceof mysqli)) position_reply(503, 'error', 'DB接続失敗');
+$mysqli->set_charset('utf8mb4');
+$userId = (string)($_SESSION['USERID'] ?? '');
+$access = ok_core_resolve_active_group($mysqli, trim((string)($_POST['group_id'] ?? '')), $userId);
+if ($access['status'] !== 200 || $access['group_id'] === '') {
+    position_reply($access['status'] === 200 ? 403 : $access['status'], 'error', 'グループを利用できません');
 }
-@$mysqli->set_charset('utf8mb4');
-
-$groupId = isset($_POST['group_id']) ? intval($_POST['group_id'], 10) : 0;
-if ($groupId < 0) { $groupId = 0; }
-
-$rawOrder = isset($_POST['order']) ? (string)$_POST['order'] : '';
-$ids = ($rawOrder !== '') ? json_decode($rawOrder, true) : [];
-if ($rawOrder !== '' && !is_array($ids)) {
-  respond_json('error', ['message' => 'invalid order JSON']);
-}
-
-$rawPositions = isset($_POST['positions']) ? (string)$_POST['positions'] : '';
-$positions = ($rawPositions !== '') ? json_decode($rawPositions, true) : [];
-if ($rawPositions !== '' && !is_array($positions)) {
-  respond_json('error', ['message' => 'invalid positions JSON']);
-}
-
-$orderedIds = [];
-foreach ($ids as $id) {
-  $value = intval($id, 10);
-  if ($value > 0 && !in_array($value, $orderedIds, true)) {
-    $orderedIds[] = $value;
-  }
-}
-
-$positionItems = [];
-foreach ($positions as $item) {
-  if (!is_array($item)) { continue; }
-  $id = isset($item['id']) ? intval($item['id'], 10) : 0;
-  if ($id <= 0) { continue; }
-  $positionItems[$id] = [
-    'x' => isset($item['x']) ? floatval($item['x']) : 0.0,
-    'y' => isset($item['y']) ? floatval($item['y']) : 0.0
-  ];
-}
-
-if (!$orderedIds && !$positionItems) {
-  respond_json('error', ['message' => 'no target fragments']);
-}
-
-$createSql = "CREATE TABLE IF NOT EXISTS knowledge_fragment_positions (
-  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  group_id INT NOT NULL DEFAULT 0,
-  externalized_contents_id INT NOT NULL,
-  pos_x FLOAT NOT NULL DEFAULT 0,
-  pos_y FLOAT NOT NULL DEFAULT 0,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY ux_group_externalized (group_id, externalized_contents_id)
-) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci";
-if (!$mysqli->query($createSql)) {
-  respond_json('error', ['message' => 'failed to prepare positions table: '.$mysqli->error]);
-}
-
-if ($res = $mysqli->query("SHOW COLUMNS FROM knowledge_fragment_positions LIKE 'group_id'")) {
-  if ($res->num_rows === 0) {
-    @$mysqli->query("ALTER TABLE knowledge_fragment_positions ADD COLUMN group_id INT NOT NULL DEFAULT 0 AFTER id");
-  }
-  $res->free();
-}
-
-if ($res = $mysqli->query("SHOW COLUMNS FROM knowledge_fragment_positions LIKE 'id'")) {
-  if ($res->num_rows > 0) {
-    $row = $res->fetch_assoc();
-    $extra = isset($row['Extra']) ? (string)$row['Extra'] : '';
-    if (stripos($extra, 'auto_increment') === false) {
-      @$mysqli->query("ALTER TABLE knowledge_fragment_positions MODIFY id INT NOT NULL AUTO_INCREMENT PRIMARY KEY");
+$groupId = (int)$access['group_id'];
+$order = json_decode((string)($_POST['order'] ?? '[]'), true);
+$positions = json_decode((string)($_POST['positions'] ?? '[]'), true);
+if (!is_array($order) || !is_array($positions)) position_reply(400, 'error', '配置データが不正です');
+$items = [];
+$requested = ['experience'=>[], 'discussion'=>[]];
+foreach ($order as $index => $item) {
+    if (!is_array($item)) position_reply(400, 'error', '型付きKF参照が必要です');
+    $type = (string)($item['source_type'] ?? '');
+    $id = (string)($item['source_id'] ?? '');
+    if (!in_array($type, ['experience','discussion'], true) || !ctype_digit($id) || (int)$id <= 0) {
+        position_reply(400, 'error', '型付きKF参照が不正です');
     }
-  }
-  $res->free();
+    $key = $type.':'.$id;
+    $items[$key] = ['type'=>$type, 'id'=>(int)$id, 'x'=>0.0, 'y'=>(float)$index, 'order_only'=>true];
+    $requested[$type][] = (int)$id;
 }
-
-if ($res = $mysqli->query("SHOW INDEX FROM knowledge_fragment_positions WHERE Key_name = 'ux_externalized'")) {
-  if ($res->num_rows > 0) { @$mysqli->query("ALTER TABLE knowledge_fragment_positions DROP INDEX ux_externalized"); }
-  $res->free();
+foreach ($positions as $item) {
+    if (!is_array($item)) position_reply(400, 'error', '配置データが不正です');
+    $type = (string)($item['source_type'] ?? '');
+    $id = (string)($item['source_id'] ?? '');
+    $x = $item['x'] ?? null;
+    $y = $item['y'] ?? null;
+    if (!in_array($type, ['experience','discussion'], true) || !ctype_digit($id) || (int)$id <= 0 ||
+        !is_numeric($x) || !is_numeric($y) || !is_finite((float)$x) || !is_finite((float)$y)) {
+        position_reply(400, 'error', '配置データが不正です');
+    }
+    $key = $type.':'.$id;
+    $items[$key] = ['type'=>$type, 'id'=>(int)$id, 'x'=>(float)$x, 'y'=>(float)$y, 'order_only'=>false];
+    $requested[$type][] = (int)$id;
 }
-if ($res = $mysqli->query("SHOW INDEX FROM knowledge_fragment_positions WHERE Key_name = 'ux_group_externalized'")) {
-  if ($res->num_rows === 0) {
-    @$mysqli->query("ALTER TABLE knowledge_fragment_positions ADD UNIQUE KEY ux_group_externalized (group_id, externalized_contents_id)");
-  }
-  $res->free();
+if (!$items) position_reply(400, 'error', '配置対象がありません');
+foreach ($requested as $type => $ids) {
+    if ($ids && !ok_core_group_has_fragments($mysqli, (string)$groupId, $type, $ids)) {
+        position_reply(403, 'error', '選択KFがグループに共有されていません');
+    }
 }
-
-$orderStmt = $mysqli->prepare(
-  "INSERT INTO knowledge_fragment_positions (group_id, externalized_contents_id, pos_x, pos_y)
-   VALUES (?, ?, 0, ?)
-   ON DUPLICATE KEY UPDATE pos_y = VALUES(pos_y)"
-);
-$posStmt = $mysqli->prepare(
-  "INSERT INTO knowledge_fragment_positions (group_id, externalized_contents_id, pos_x, pos_y)
-   VALUES (?, ?, ?, ?)
-   ON DUPLICATE KEY UPDATE pos_x = VALUES(pos_x), pos_y = VALUES(pos_y)"
-);
-if (!$orderStmt || !$posStmt) {
-  respond_json('error', ['message' => 'failed to prepare save SQL']);
+try {
+    $mysqli->begin_transaction();
+    $orderStmt = $mysqli->prepare('INSERT INTO knowledge_fragment_positions
+        (group_id, fragment_source_type, fragment_source_id, externalized_contents_id, pos_x, pos_y)
+        VALUES (?, ?, ?, ?, 0, ?) ON DUPLICATE KEY UPDATE pos_y = VALUES(pos_y)');
+    $positionStmt = $mysqli->prepare('INSERT INTO knowledge_fragment_positions
+        (group_id, fragment_source_type, fragment_source_id, externalized_contents_id, pos_x, pos_y)
+        VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE pos_x = VALUES(pos_x), pos_y = VALUES(pos_y)');
+    foreach ($items as $item) {
+        $type = $item['type']; $id = $item['id']; $x = $item['x']; $y = $item['y'];
+        if ($item['order_only']) {
+            $orderStmt->bind_param('isiid', $groupId, $type, $id, $id, $y);
+            $orderStmt->execute();
+        } else {
+            $positionStmt->bind_param('isiidd', $groupId, $type, $id, $id, $x, $y);
+            $positionStmt->execute();
+        }
+    }
+    $orderStmt->close();
+    $positionStmt->close();
+    $mysqli->commit();
+    position_reply(200, 'ok', '保存しました', ['items_saved'=>count($items)]);
+} catch (Throwable $error) {
+    $mysqli->rollback();
+    error_log('save_fragment_order: '.$error->getMessage());
+    position_reply(500, 'error', '配置の保存に失敗しました');
 }
-
-$saved = 0;
-foreach ($orderedIds as $index => $extId) {
-  $posY = (float)$index;
-  $orderStmt->bind_param('iid', $groupId, $extId, $posY);
-  if ($orderStmt->execute()) { $saved++; }
-}
-
-foreach ($positionItems as $extId => $pos) {
-  $x = (float)$pos['x'];
-  $y = (float)$pos['y'];
-  $posStmt->bind_param('iidd', $groupId, $extId, $x, $y);
-  if ($posStmt->execute()) { $saved++; }
-}
-
-$orderStmt->close();
-$posStmt->close();
-
-respond_json('ok', ['items_saved' => $saved]);

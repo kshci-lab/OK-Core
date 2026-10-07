@@ -28,6 +28,16 @@ body.auth-page {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+body.ok-core-app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+body.ok-core-app:has(#org-tabpanel-combination:not([hidden])) {
+    height: auto;
+}
+
 .app-header {
     min-height: 64px;
     display: flex;
@@ -104,15 +114,21 @@ button:hover,
     color: #fff;
 }
 
-.ok-main {
-    height: calc(100vh - 64px);
+#organizational_container.ok-main {
     min-height: 620px;
+    flex: 1;
     display: flex;
     flex-direction: column;
+    float: none;
+}
+
+body.ok-core-app:has(#org-tabpanel-cooperation:not([hidden])) .ok-main {
+    min-height: 0;
 }
 
 .toolbar-band {
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
@@ -171,6 +187,14 @@ button:hover,
     min-height: 0;
 }
 
+#org-tabpanel-cooperation:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: auto;
+}
+
 .network-area {
     height: 100%;
     display: flex;
@@ -178,9 +202,16 @@ button:hover,
     background: #ffffff;
 }
 
+#myOrganizationalnetwork_area {
+    flex: none;
+    min-height: 150px;
+    height: 100%;
+}
+
 .network-toolbar {
     min-height: 44px;
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
@@ -237,6 +268,8 @@ button:hover,
 #myOrganizationalnetwork {
     flex: 1;
     min-height: 0;
+    height: auto;
+    margin-bottom: 0;
 }
 
 #t_Organizational_conmenu {

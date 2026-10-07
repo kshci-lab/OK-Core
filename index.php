@@ -57,9 +57,9 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OK-Core</title>
-    <link rel="stylesheet" href="css/organizational-network.css">
-    <link rel="stylesheet" href="css/organizational-map.css">
-    <link rel="stylesheet" href="css/ok-core.css">
+    <link rel="stylesheet" href="css/organizational-network.css?v=<?php echo (int)filemtime(__DIR__ . '/css/organizational-network.css'); ?>">
+    <link rel="stylesheet" href="css/organizational-map.css?v=<?php echo (int)filemtime(__DIR__ . '/css/organizational-map.css'); ?>">
+    <link rel="stylesheet" href="css/ok-core.css?v=<?php echo (int)filemtime(__DIR__ . '/css/ok-core.css'); ?>">
     <script src="js/jquery-1.8.2.min.js"></script>
     <script src="js/jquery-ui.min.js"></script>
     <script src="js/vis-network.min.js"></script>

@@ -60,82 +60,11 @@ if(!$tbl){
     exit;
 }
 if($tbl->num_rows===0){
-    // テーブル自体が無ければ作成（互換性高めの定義）
-    $createSql = "CREATE TABLE knowledge_explorer (\n".
-                 "  node_id INT(11) NOT NULL AUTO_INCREMENT,\n".
-                 "  parent_id INT(11) NULL DEFAULT NULL,\n".
-                 "  node_title VARCHAR(255) NOT NULL,\n".
-                 "  knowledge_group_id INT(11) NULL DEFAULT NULL,\n".
-                 "  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n".
-                 "  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n".
-                 "  PRIMARY KEY (node_id),\n".
-                 "  KEY parent_id (parent_id)\n".
-                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
-    if(!$mysqli->query($createSql)){
-        // 作成に失敗しても詳細を返して終了
-        http_response_code(500);
-        echo json_encode(['status'=>'error','message'=>'テーブル作成失敗: '.$mysqli->error]);
-        exit;
-    }
+    http_response_code(503);
+    echo json_encode(['status'=>'error','message'=>'knowledge_explorer テーブルがありません']);
+    exit;
 }
 $tbl->close();
-
-// Ensure commonly used columns exist (non-fatal if ALTER fails)
-// These columns are used to match fukushima-system output structure.
-$ensureCols = [
-    ['name' => 'deleted', 'sql' => "ALTER TABLE `$table` ADD COLUMN `deleted` TINYINT(1) NOT NULL DEFAULT 0"],
-    ['name' => 'comment', 'sql' => "ALTER TABLE `$table` ADD COLUMN `comment` TEXT NULL DEFAULT NULL"],
-    ['name' => 'tacto_when', 'sql' => "ALTER TABLE `$table` ADD COLUMN `tacto_when` TEXT NULL DEFAULT NULL"],
-    ['name' => 'tacto_what', 'sql' => "ALTER TABLE `$table` ADD COLUMN `tacto_what` TEXT NULL DEFAULT NULL"],
-    ['name' => 'tacto_why', 'sql' => "ALTER TABLE `$table` ADD COLUMN `tacto_why` TEXT NULL DEFAULT NULL"],
-    ['name' => 'organizational_basis', 'sql' => "ALTER TABLE `$table` ADD COLUMN `organizational_basis` TEXT NULL DEFAULT NULL"],
-    ['name' => 'updated_by', 'sql' => "ALTER TABLE `$table` ADD COLUMN `updated_by` INT(11) NULL DEFAULT NULL"],
-    // store as CSV string to support multiple fragments (fukushima-system behavior)
-    ['name' => 'knowledge_fragment_id', 'sql' => "ALTER TABLE `$table` ADD COLUMN `knowledge_fragment_id` VARCHAR(255) NULL DEFAULT NULL"],
-    // used for ordering root categories
-    ['name' => 'sort_order', 'sql' => "ALTER TABLE `$table` ADD COLUMN `sort_order` INT(11) NULL DEFAULT NULL"],
-    ['name' => 'knowledge_group_id', 'sql' => "ALTER TABLE `$table` ADD COLUMN `knowledge_group_id` INT(11) NULL DEFAULT NULL"],
-];
-foreach($ensureCols as $c){
-    $col = $c['name'];
-    $has = false;
-    if($resC = $mysqli->query("SHOW COLUMNS FROM `$table` LIKE '".$mysqli->real_escape_string($col)."'")){
-        $has = ($resC->num_rows > 0);
-        $resC->free();
-    }
-    if(!$has){
-        // Ignore errors (older schemas might not allow ALTER here)
-        @$mysqli->query($c['sql']);
-    }
-}
-
-// If text-like fields use legacy VARCHAR sizes, try to widen them for structured organizational knowledge.
-try{
-    foreach(['comment', 'tacto_when', 'tacto_what', 'tacto_why', 'organizational_basis'] as $textCol){
-        $colType = '';
-        if($resCol = $mysqli->query("SHOW COLUMNS FROM `$table` LIKE '".$mysqli->real_escape_string($textCol)."'")){
-            $rowCol = $resCol->fetch_assoc();
-            if($rowCol && isset($rowCol['Type'])){ $colType = strtolower((string)$rowCol['Type']); }
-            $resCol->free();
-        }
-        if($colType && strpos($colType,'text') === false){
-            @$mysqli->query("ALTER TABLE `$table` MODIFY COLUMN `$textCol` TEXT NULL DEFAULT NULL");
-        }
-    }
-}catch(Throwable $e){ }
-
-// If knowledge_fragment_id exists but is not VARCHAR/TEXT, try to widen it to VARCHAR for CSV support.
-try{
-    $colType = '';
-    if($resCol = $mysqli->query("SHOW COLUMNS FROM `$table` LIKE 'knowledge_fragment_id'")){
-        $rowCol = $resCol->fetch_assoc();
-        if($rowCol && isset($rowCol['Type'])){ $colType = strtolower((string)$rowCol['Type']); }
-        $resCol->free();
-    }
-    if($colType && (strpos($colType,'varchar') === false) && (strpos($colType,'text') === false)){
-        @$mysqli->query("ALTER TABLE `$table` MODIFY COLUMN `knowledge_fragment_id` VARCHAR(255) NULL DEFAULT NULL");
-    }
-}catch(Throwable $e){ }
 
 // カラム定義を柔軟に解決（互換のため候補名を許容）
 $colId = null;      // knowledge_node_id / node_id / id / knowledge_explorer_id
@@ -197,78 +126,6 @@ if($colTitle === null){
     ];
     echo json_encode(['status'=>'ok','nodes'=>$fallback]);
     exit;
-}
-
-// トップレベル3種を保証（parent列とtitle列がある場合のみ）
-if($colParent !== null && $colTitle !== null){
-    $topTitles = ['知識関連','研究方略関連','その他'];
-    $existing = [];
-    // 柔軟化：SQLで存在しないカラムを直接指定するとエラーになるため、SELECT * で取得し、PHP側でカラムの有無を確認する
-    $sqlTop = "SELECT * FROM $table WHERE ".($colParent ? "$colParent IS NULL" : "1=0").($hasDeleted?" AND deleted=0":"").$groupWhere;
-    if($resTop = $mysqli->query($sqlTop)){
-        while($r = $resTop->fetch_assoc()){
-            $titleVal = null;
-            if($colTitle && isset($r[$colTitle])){ $titleVal = $r[$colTitle]; }
-            elseif(isset($r['node_title'])){ $titleVal = $r['node_title']; }
-            elseif(isset($r['title'])){ $titleVal = $r['title']; }
-            if($titleVal !== null){
-                $idVal = null;
-                if($colId && isset($r[$colId])){ $idVal = (int)$r[$colId]; }
-                elseif(isset($r['node_id'])){ $idVal = (int)$r['node_id']; }
-                elseif(isset($r['id'])){ $idVal = (int)$r['id']; }
-                $existing[$titleVal] = $idVal;
-            }
-        }
-        $resTop->close();
-    }
-    // Important: do not re-create the 3 top categories based on title matching when user renames them.
-    // Only bootstrap the defaults when there are not enough root nodes yet.
-    $rootCount = count($existing);
-    if($rootCount < 3){
-        foreach($topTitles as $t){
-            if(!isset($existing[$t])){
-                // 採番（AUTO_INCREMENT 無しなら MAX+1、基準=113）
-                $nextId = null;
-                if(!$idIsAutoInc && $colId){
-                    $nextId = 113;
-                    if($rs = $mysqli->query("SELECT MAX($colId) AS max_id FROM $table")){
-                        $rowm = $rs->fetch_assoc();
-                        if($rowm && isset($rowm['max_id']) && $rowm['max_id']!==null){
-                            $maxv = (int)$rowm['max_id'];
-                            $nextId = ($maxv >= 113) ? ($maxv + 1) : 113;
-                        }
-                        $rs->close();
-                    }
-                }
-                if(!$idIsAutoInc && $colId){
-                    // 既に同一ID/同一ユニークキーが存在しても API が落ちないようにする
-                    $useGroup = ($colGroup !== null && $selectedGroupId !== '');
-                    $sqlIns = "INSERT IGNORE INTO $table ($colId,$colTitle".($colParent?",$colParent":"").($useGroup?",$colGroup":"").($hasDeleted?",deleted":"").") VALUES (?,?".($colParent?",NULL":"").($useGroup?",?":"").($hasDeleted?",0":"").")";
-                    if($stmt = $mysqli->prepare($sqlIns)){
-                        if($useGroup){
-                            $stmt->bind_param('iss',$nextId,$t,$selectedGroupId);
-                        } else {
-                            $stmt->bind_param('is',$nextId,$t);
-                        }
-                        $stmt->execute();
-                        $stmt->close();
-                    }
-                } else {
-                    $useGroup = ($colGroup !== null && $selectedGroupId !== '');
-                    $sqlIns = "INSERT IGNORE INTO $table ($colTitle".($colParent?",$colParent":"").($useGroup?",$colGroup":"").($hasDeleted?",deleted":"").") VALUES (?".($colParent?",NULL":"").($useGroup?",?":"").($hasDeleted?",0":"").")";
-                    if($stmt = $mysqli->prepare($sqlIns)){
-                        if($useGroup){
-                            $stmt->bind_param('ss',$t,$selectedGroupId);
-                        } else {
-                            $stmt->bind_param('s',$t);
-                        }
-                        $stmt->execute();
-                        $stmt->close();
-                    }
-                }
-            }
-        }
-    }
 }
 
 // 全ノード取得（動的カラム名で取得）
@@ -383,7 +240,7 @@ if ($res = $mysqli->query("SELECT externalized_contents_id
 foreach ($nodes as &$node) {
     if (!empty($node['knowledge_fragment_id'])) {
         $visibleIds = array_values(array_filter(__split_knowledge_tree_ids($node['knowledge_fragment_id']), static function ($id) use ($allowedExperienceIds, $allowedDiscussionIds) {
-            return isset($allowedExperienceIds[$id]) || isset($allowedDiscussionIds[$id]);
+            return isset($allowedExperienceIds[$id]);
         }));
         $node['knowledge_fragment_id'] = $visibleIds ? implode(',', $visibleIds) : null;
     }
@@ -395,6 +252,7 @@ unset($node);
 
 $linkTypesByNode = [];
 $linkIdsByNode = [];
+$hasAnyLinksByNode = [];
 if (!empty($nodes)) {
     $nodeIds = [];
     foreach ($nodes as $node) {
@@ -418,6 +276,7 @@ if (!empty($nodes)) {
                         $sourceType = __normalize_knowledge_tree_source_type(isset($linkRow['fragment_source_type']) ? $linkRow['fragment_source_type'] : '');
                         $sourceId = isset($linkRow['fragment_source_id']) ? intval($linkRow['fragment_source_id'], 10) : 0;
                         if ($linkNodeId <= 0 || $sourceType === '' || $sourceId <= 0) { continue; }
+                        $hasAnyLinksByNode[$linkNodeId] = true;
                         if ($sourceType === 'experience' && !isset($allowedExperienceIds[$sourceId])) { continue; }
                         if ($sourceType === 'discussion' && !isset($allowedDiscussionIds[$sourceId])) { continue; }
                         if (!isset($linkTypesByNode[$linkNodeId])) { $linkTypesByNode[$linkNodeId] = []; }
@@ -435,7 +294,13 @@ if (!empty($nodes)) {
         $nidForLink = isset($node['node_id']) ? intval($node['node_id'], 10) : 0;
         $types = isset($linkTypesByNode[$nidForLink]) ? $linkTypesByNode[$nidForLink] : [];
         $idsByType = isset($linkIdsByNode[$nidForLink]) ? $linkIdsByNode[$nidForLink] : [];
-        if (empty($types)) {
+        if (isset($hasAnyLinksByNode[$nidForLink])) {
+            $node['knowledge_fragment_id'] = !empty($idsByType['experience'])
+                ? implode(',', $idsByType['experience']) : null;
+            $node['externalized_contents_id'] = !empty($idsByType['discussion'])
+                ? $idsByType['discussion'][0] : null;
+        }
+        if (empty($types) && !isset($hasAnyLinksByNode[$nidForLink])) {
             if (!empty($node['externalized_contents_id'])) {
                 $types[] = 'discussion';
                 $idsByType['discussion'] = [(int)$node['externalized_contents_id']];

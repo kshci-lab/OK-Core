@@ -1,9 +1,17 @@
 <?php
 
+// ローカルPCから接続するとき
+// $db_host = getenv('OK_CORE_DB_HOST') ?: 'localhost';
+// $db_port = getenv('OK_CORE_DB_PORT') ?: 8889;
+// $db_user = getenv('OK_CORE_DB_USER') ?: 'root';
+// $db_password = getenv('OK_CORE_DB_PASSWORD') ?: 'root';
+// $db_dbname = getenv('OK_CORE_DB_NAME') ?: 'ok_core';
+
+//　サーバーに接続するとき
 $db_host = getenv('OK_CORE_DB_HOST') ?: 'localhost';
-$db_port = getenv('OK_CORE_DB_PORT') ?: 8889;
+$db_port = getenv('OK_CORE_DB_PORT') ?: 3306;
 $db_user = getenv('OK_CORE_DB_USER') ?: 'root';
-$db_password = getenv('OK_CORE_DB_PASSWORD') ?: 'root';
+$db_password = getenv('OK_CORE_DB_PASSWORD') ?: 'kslabkslab';
 $db_dbname = getenv('OK_CORE_DB_NAME') ?: 'ok_core';
 
 try {

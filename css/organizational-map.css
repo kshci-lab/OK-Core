@@ -2,13 +2,7 @@
 
 /*ネットワーク*/
 #organizational_container{
-	width: calc(100vw - 350px);
-	/* width: 100%; */
-	min-width: 300px;
-	/* height:100%; */
-	min-height: 100%;
-	/* margin-bottom:2vh; */
-	/* border-bottom:solid 5px #fbd393; */
+	width:100%;
 	border:solid 5px #fbd393;
 	background:#fff;
 	overflow: visible;
@@ -28,7 +22,6 @@
 }
 #myOrganizationalnetwork {
 	position: relative;
-	width: calc(100vw - 350px);
 	min-width: 300px;
 	height:100%;
 	min-height: 100%;
@@ -61,7 +54,6 @@
 }
 #othersProcessnetwork {
 	position: relative;
-	width: calc(100vw - 350px);
 	min-width: 300px;
 	height:100%;
 	min-height: 450px;
@@ -381,7 +373,7 @@ input[type="checkbox"][name="check_organizational"]{
 	gap:8px;
 	padding:10px 10px 0 10px;
 	border-bottom:1px solid rgba(0,0,0,0.08);
-	background:linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
+	/* background:linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.85)); */
 }
 .org-subtab{
 	appearance:none;
