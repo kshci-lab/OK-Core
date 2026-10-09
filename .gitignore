@@ -3,5 +3,6 @@ vendor/
 composer.phar
 certs/cacert.pem
 php/sso_local.php
+php/forest_process_map_local.php
 api/v1/config.local.php
 backups/

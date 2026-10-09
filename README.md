@@ -2,6 +2,8 @@
 
 OK-Core is the organizational knowledge application separated from Forest-Core.
 
+Forestの思考過程表出化マップの閲覧設定は[docs/thinking-process-map-integration.md](docs/thinking-process-map-integration.md)を参照してください。今回の閲覧機能にDB変更は不要です。
+
 ## Local setup
 
 1. Create the database from `docs/ok_core_schema.sql` in phpMyAdmin.

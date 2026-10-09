@@ -111,6 +111,7 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
 
                 <div id="t_Organizational_conmenu">
                     <ul>
+                        <li><a href="javascript:void(0);" id="organizational_conmenu1">思考過程表出化マップを表示</a></li>
                         <li><a href="javascript:void(0);" id="organizational_conmenu6" style="display:none">編集する</a></li>
                         <li><a href="javascript:void(0);" id="organizational_conmenu5" style="display:none">削除する</a></li>
                         <li><a href="javascript:void(0);" id="organizational_conmenu4">キャンセル</a></li>
@@ -123,10 +124,12 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
             <div id="process_others_network_container" class="related-process-pane" oncontextmenu="return false;">
                 <div id="othersProcessnetwork_area">
                     <div id="buttoncluster" class="network-toolbar">
-                        <button type="button" class="area_close" onclick="closeOthersThinkingProcessMap()" id="area_close">x</button>
+                        <button type="button" class="area_close" id="area_close" aria-label="思考過程マップを閉じる">×</button>
                         <button type="button" class="thinkingProcess_network_button" id="process_ZoomIn">拡大</button>
                         <button type="button" class="thinkingProcess_network_button" id="process_ZoomOut">縮小</button>
                         <div id="others_conceptdisplay"></div>
+                        <button type="button" class="thinkingProcess_network_button" id="process_Fit">全体表示</button>
+                        <span id="others_process_status" role="status" aria-live="polite"></span>
                     </div>
                     <div id="othersProcessnetwork"></div>
                 </div>
@@ -255,6 +258,7 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
     <div id="accordion_discussion" class="compat-hidden"></div>
 
     <script src="js/organizational-map.js?v=<?php echo (int)filemtime(__DIR__ . '/js/organizational-map.js'); ?>"></script>
+    <script src="js/thinking-process-viewer.js?v=<?php echo (int)filemtime(__DIR__ . '/js/thinking-process-viewer.js'); ?>"></script>
     <script src="js/organizational-combination-tab.js?v=<?php echo (int)filemtime(__DIR__ . '/js/organizational-combination-tab.js'); ?>"></script>
 </body>
 </html>
