@@ -1,4 +1,4 @@
-// 議論内省マップに関する処理プログラム
+﻿// 議論内省マップに関する処理プログラム
 let defaultOrganizational;
 let defaultRecordOrganizational;
 let defaultShowOrganizational;
@@ -570,7 +570,7 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
             return; // 重複がある場合は追加せずにリターン
         }
         let node_shape = 'image';     // ノードの形状
-        var DIR_img = "../image/organizational/"; //ノードのアイコンとなる画像のパス
+        var DIR_img = "image/organizational/"; //ノードのアイコンとなる画像のパス
         let image = "user-solid-full.svg"; 
 
         const newNode = {
@@ -802,9 +802,7 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
 
     addReloadTriggerNode(flag, trigger_id, edge_id, from_node, to_node, activity_id, t_label, t_type, t_time, node_x, node_y){
         let color = '#82ae46'; // ノードの背景色
-        let node_shape = 'circularImage';     // ノードの形状
-        var DIR_img = "../image/triggers/"; //ノードのアイコンとなる画像のパス
-        let image = "thinking.png"; 
+        let node_shape = 'dot';     // 旧形式のtriggerには画像が提供されない
         const t_title = document.createElement("div");  // titleのHTML
 
         if(!activity_id){
@@ -817,26 +815,6 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
         }
         if(!node_y){
             node_y = Math.floor(Math.random()*200)-100;
-        }
-
-        //triggerとなった活動ごとにアイコンを変更
-        switch(t_type) {
-            case "自己内対話": //自己内対話
-                break;
-            case "議論資料作成": //議論資料作成
-                image = "writing.png";
-                break;
-            case "議論内省": //議論内省
-                image = "meeting.png";
-                break;
-            case "論文読解": //論文読解
-                image = "reading.png";
-                break;
-            case "論文執筆": //論文執筆
-                image = "writing-scholar.png";
-                break;
-            default: // その他
-                break;
         }
 
         // trigger_fromの設定
@@ -886,8 +864,6 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
             type: t_type,
             color: color,
             shape: node_shape,
-            image: DIR_img + image,
-            imagePadding: 7,
             fixed: false,
             x: node_x, y: node_y,
         };
@@ -980,6 +956,9 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
 
     // 右クリック時
     onContext(params) {
+        if (params.event && typeof params.event.preventDefault === 'function') {
+            params.event.preventDefault();
+        }
         this.nodeConnectEnabled = false;
         if (params.nodes.length == 1) {
             $('#jsmind_container').css('height','50%');
@@ -987,13 +966,20 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
             this.selectId = params.nodes[0];
             this.selectedOrganizationalNode = this.nodes.get(this.selectId);
             this.updateDeleteExperienceKnowledgeMenu();
+            const processMenu = document.getElementById('organizational_conmenu1');
+            if (processMenu) {
+                const sourceNode = this.selectedOrganizationalNode;
+                processMenu.style.display = sourceNode
+                    && sourceNode.source_type === 'experience'
+                    && /^\d+$/.test(String(sourceNode.source_record_id || '')) ? '' : 'none';
+            }
             const pointerX = params.pointer.DOM.x;
             const pointerY = params.pointer.DOM.y;
             const mynetPosition = document.getElementById("myOrganizationalnetwork").getBoundingClientRect();
             this.BoxDisplay.x = pointerX + mynetPosition.left + 20;
             this.BoxDisplay.y = pointerY + mynetPosition.top + 20;
-            NetworkMenu.style.left = this.BoxDisplay.x;
-            NetworkMenu.style.top = this.BoxDisplay.y;
+            NetworkMenu.style.left = this.BoxDisplay.x + 'px';
+            NetworkMenu.style.top = this.BoxDisplay.y + 'px';
             NetworkMenu.style.display = "block";//ここようわからん未完成かも
         }
     }
@@ -1039,15 +1025,9 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
         if (!selectNodeId) return;
 
         const others_node = defaultOrganizational.nodes.get(selectNodeId);
-        if (!others_node) return;
+        if (!others_node || others_node.source_type !== 'experience') return;
 
         console.log('view_otherprocessmap -> node:', others_node);
-
-        // process_others_network_container を表示（存在すれば）
-        const procContainer = document.getElementById('process_others_network_container');
-        if (procContainer) {
-            procContainer.style.display = 'block';
-        }
 
         // 他者の思考過程マップを開く（user_id が null の場合は既定動作に従う）
         try {
@@ -1832,6 +1812,8 @@ function showOrganizationalMap(){
 function closeOthersThinkingProcessMap(){
   
     $('#process_others_network_container').css('display','none');
+    const processPanel = document.getElementById('org-tabpanel-cooperation');
+    if (processPanel) processPanel.classList.remove('is-showing-process-map');
     // Remove layout overrides from the former split view so the map fills its panel again.
     $('#organizational_container').css({ display: '', width: '', height: '', flex: '' });
     $('#myOrganizationalnetwork_area').css({ height: '', flex: '' });
@@ -1887,3 +1869,4 @@ window.addEventListener('load', () => {
       });
     });
 });
+

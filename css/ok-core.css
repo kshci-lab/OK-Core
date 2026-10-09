@@ -303,6 +303,84 @@ body.ok-core-app:has(#org-tabpanel-cooperation:not([hidden])) .ok-main {
     display: none;
 }
 
+#org-tabpanel-cooperation.is-showing-process-map {
+    overflow: hidden;
+}
+
+#org-tabpanel-cooperation.is-showing-process-map #myOrganizationalnetwork_area {
+    flex: 0 0 auto;
+    height: 50%;
+    min-height: 160px;
+    resize: vertical;
+    overflow: hidden;
+}
+
+#org-tabpanel-cooperation.is-showing-process-map #process_others_network_container {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    width: 100%;
+    height: auto;
+    min-height: 180px;
+    overflow: hidden;
+    border-top: 4px solid #faae2b;
+}
+
+#process_others_network_container #othersProcessnetwork_area {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+#process_others_network_container #othersProcessnetwork {
+    flex: 1 1 0;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    margin: 0;
+}
+
+#others_conceptdisplay {
+    min-width: 0;
+    max-width: min(42vw, 520px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #553700;
+    font-size: 13px;
+}
+
+#others_process_status {
+    margin-left: auto;
+    color: var(--ok-muted);
+    font-size: 12px;
+}
+
+#others_process_status.is-error {
+    color: #ad3434;
+}
+
+.process-kf-context-menu {
+    position: fixed;
+    z-index: 12000;
+    padding: 5px;
+    background: #fff;
+    border: 1px solid var(--ok-border);
+    border-radius: 6px;
+    box-shadow: 0 8px 20px rgba(17, 34, 40, 0.16);
+}
+
+.process-kf-context-menu button {
+    display: block;
+    padding: 7px 9px;
+    border: 0;
+    white-space: nowrap;
+}
+
 #shared_combination_overlay {
     height: 100%;
     background: #ffffff;
