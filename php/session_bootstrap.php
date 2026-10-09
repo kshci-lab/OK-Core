@@ -41,12 +41,12 @@ function hcimlab_start_session()
         );
 
         if (PHP_VERSION_ID >= 70300) {
-            $cookieParams['samesite'] = 'Lax';
+            $cookieParams['samesite'] = 'None';
             session_set_cookie_params($cookieParams);
         } else {
             session_set_cookie_params(
                 $cookieParams['lifetime'],
-                $cookieParams['path'] . '; samesite=Lax',
+                $cookieParams['path'] . '; samesite=None',
                 $cookieParams['domain'],
                 $cookieParams['secure'],
                 $cookieParams['httponly']

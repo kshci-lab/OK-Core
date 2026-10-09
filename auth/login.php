@@ -3,10 +3,12 @@
 require_once __DIR__ . '/../php/session_bootstrap.php';
 hcimlab_start_session();
 require_once __DIR__ . '/../php/hcimlab_sso.php';
+require_once __DIR__ . '/../php/sso_return.php';
 
 try {
     $config = hcimlab_sso_config();
     $baseUrl = rtrim($config['base_url'], '/');
+    hcimlab_sso_capture_agent_return($baseUrl);
     $clientUrl = isset($_GET['clientUrl']) ? (string)$_GET['clientUrl'] : '';
     $forceLogin = isset($_GET['force']) && (string)$_GET['force'] === '1';
     if ($clientUrl !== '' && hcimlab_sso_is_safe_return_url($clientUrl)) {
@@ -19,7 +21,7 @@ try {
     }
 
     if (!$forceLogin && !empty($_SESSION['USERID'])) {
-        header('Location: ' . $baseUrl . '/index.php');
+        header('Location: ' . hcimlab_sso_consume_agent_return($baseUrl));
         exit;
     }
     $mode = isset($_GET['mode']) ? (string)$_GET['mode'] : '';
@@ -51,7 +53,9 @@ try {
         unset($_SESSION['SSO_ERROR']);
         unset($_SESSION['HCIMLAB_SSO_FORCE_LOGIN']);
 
-        header('Location: ' . $baseUrl . '/index.php');
+        // Keep an OKAgent return_to destination through local development login too.
+        // The destination was validated and captured before authentication.
+        header('Location: ' . hcimlab_sso_consume_agent_return($baseUrl));
         exit;
     }
 

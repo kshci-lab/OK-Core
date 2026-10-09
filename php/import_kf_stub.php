@@ -5,6 +5,7 @@ ini_set('display_errors', 0);
 mysqli_report(MYSQLI_REPORT_OFF);
 
 require_once __DIR__ . '/connect_db.php';
+require_once __DIR__ . '/kf_import_title.php';
 
 function import_kf_respond(int $statusCode, array $payload): void
 {
@@ -89,7 +90,8 @@ function import_kf_ensure_schema(mysqli $mysqli): void
     import_kf_ensure_column($mysqli, 'externalized_contents', 'source_type', 'VARCHAR(32) DEFAULT NULL', 'source_system');
     import_kf_ensure_column($mysqli, 'externalized_contents', 'source_id', 'VARCHAR(191) DEFAULT NULL', 'source_type');
     import_kf_ensure_column($mysqli, 'externalized_contents', 'source_user_ref', 'VARCHAR(191) DEFAULT NULL', 'source_id');
-    import_kf_ensure_column($mysqli, 'externalized_contents', 'raw_payload', 'LONGTEXT DEFAULT NULL', 'source_user_ref');
+    import_kf_ensure_column($mysqli, 'externalized_contents', 'title', 'VARCHAR(255) DEFAULT NULL', 'source_user_ref');
+    import_kf_ensure_column($mysqli, 'externalized_contents', 'raw_payload', 'LONGTEXT DEFAULT NULL', 'title');
 
     import_kf_ensure_index($mysqli, 'externalized_contents', 'ux_externalized_source_fragment', 'UNIQUE KEY `ux_externalized_source_fragment` (`source_system`,`source_type`,`source_id`)');
     import_kf_ensure_index($mysqli, 'externalized_contents', 'idx_externalized_group_id', 'KEY `idx_externalized_group_id` (`group_id`)');
@@ -356,6 +358,71 @@ function import_kf_trimmed_string($value): string
     return trim((string)$value);
 }
 
+function import_kf_resolve_group_id(mysqli $mysqli, int $userId, string $groupRaw): int
+{
+    if ($userId <= 0) {
+        import_kf_respond(500, ['success' => false, 'message' => 'Unable to resolve OK-Core user']);
+    }
+
+    if ($groupRaw !== '') {
+        if (!ctype_digit($groupRaw) || (int)$groupRaw <= 0) {
+            import_kf_respond(400, ['success' => false, 'message' => 'Invalid group_id']);
+        }
+        $groupId = (int)$groupRaw;
+        $sql = 'SELECT 1
+                  FROM knowledge_groups kg
+                  INNER JOIN kgroup_user_link kug
+                    ON kug.group_id = kg.group_id
+                   AND kug.user_id = ?
+                   AND kug.deleted = 0
+                 WHERE kg.group_id = ?
+                   AND kg.deleted = 0
+                 LIMIT 1';
+        $stmt = $mysqli->prepare($sql);
+        if (!$stmt) {
+            import_kf_respond(500, ['success' => false, 'message' => 'Failed to prepare group validation', 'detail' => $mysqli->error]);
+        }
+        $stmt->bind_param('ii', $userId, $groupId);
+        $ok = $stmt->execute() && $stmt->get_result()->num_rows > 0;
+        $stmt->close();
+        if (!$ok) {
+            import_kf_respond(403, ['success' => false, 'message' => 'User is not an active member of the specified group', 'group_id' => $groupId]);
+        }
+        return $groupId;
+    }
+
+    $stmt = $mysqli->prepare(
+        'SELECT DISTINCT kug.group_id
+           FROM kgroup_user_link kug
+           INNER JOIN knowledge_groups kg ON kg.group_id = kug.group_id
+          WHERE kug.user_id = ? AND kug.deleted = 0 AND kg.deleted = 0
+          ORDER BY kug.group_id ASC'
+    );
+    if (!$stmt) {
+        import_kf_respond(500, ['success' => false, 'message' => 'Failed to prepare group lookup', 'detail' => $mysqli->error]);
+    }
+    $stmt->bind_param('i', $userId);
+    if (!$stmt->execute() || !($result = $stmt->get_result())) {
+        $error = $stmt->error;
+        $stmt->close();
+        import_kf_respond(500, ['success' => false, 'message' => 'Failed to resolve group membership', 'detail' => $error]);
+    }
+    $groups = [];
+    while ($row = $result->fetch_assoc()) {
+        $groups[] = (int)$row['group_id'];
+    }
+    $result->free();
+    $stmt->close();
+
+    if (count($groups) === 0) {
+        import_kf_respond(403, ['success' => false, 'message' => 'No active group membership found']);
+    }
+    if (count($groups) > 1) {
+        import_kf_respond(409, ['success' => false, 'message' => 'Multiple group memberships found; group_id is required', 'group_ids' => $groups]);
+    }
+    return $groups[0];
+}
+
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($method === 'GET') {
@@ -389,6 +456,7 @@ $sourceType = strtolower(import_kf_trimmed_string($payload['source_type'] ?? '')
 $sourceId = import_kf_trimmed_string($payload['source_id'] ?? '');
 $sourceUserRef = import_kf_trimmed_string($payload['source_user_ref'] ?? '');
 $sourceUserName = import_kf_trimmed_string($payload['source_user_name'] ?? '');
+$title = import_kf_trimmed_string($payload['title'] ?? '');
 $groupRaw = import_kf_trimmed_string($payload['group_id'] ?? '');
 $selectedContents = (string)($payload['selected_contents'] ?? '');
 $knowledgeFragmentContent = import_kf_trimmed_string($payload['knowledge_fragment_content'] ?? '');
@@ -424,21 +492,10 @@ if ($sourceSystem === '' || $sourceId === '' || $knowledgeFragmentContent === ''
     ]);
 }
 
-$groupId = 0;
-if ($groupRaw !== '') {
-    if (!ctype_digit($groupRaw)) {
-        import_kf_respond(400, [
-            'success' => false,
-            'message' => 'Invalid group_id',
-        ]);
-    }
-    $groupId = (int)$groupRaw;
-}
-
 $sourceUserRefValue = ($sourceUserRef === '') ? null : $sourceUserRef;
 $rawPayloadValue = $rawJson;
-
 $importUserId = import_kf_resolve_user_id($mysqli, $sourceSystem, $sourceUserRef, $sourceUserName);
+$groupId = import_kf_resolve_group_id($mysqli, $importUserId, $groupRaw);
 
 $checkSql = 'SELECT externalized_contents_id
                FROM externalized_contents
@@ -467,10 +524,29 @@ if (!$checkStmt->execute()) {
 $checkStmt->bind_result($existingId);
 if ($checkStmt->fetch()) {
     $checkStmt->close();
-    if ($updateStmt = $mysqli->prepare('UPDATE externalized_contents SET user_id = ?, source_user_ref = ?, raw_payload = ?, updated_at = NOW() WHERE externalized_contents_id = ?')) {
-        $updateStmt->bind_param('issi', $importUserId, $sourceUserRefValue, $rawPayloadValue, $existingId);
-        $updateStmt->execute();
+    try {
+        import_kf_update_duplicate_title($mysqli, (int)$existingId, $payload);
+        $updateStmt = $mysqli->prepare('UPDATE externalized_contents SET user_id = ?, group_id = ?, source_user_ref = ?, updated_at = NOW() WHERE externalized_contents_id = ?');
+        if (!$updateStmt) {
+            throw new RuntimeException('Failed to prepare duplicate metadata update: ' . $mysqli->error);
+        }
+        $updateStmt->bind_param('iisi', $importUserId, $groupId, $sourceUserRefValue, $existingId);
+        if (!$updateStmt->execute()) {
+            $error = $updateStmt->error;
+            $updateStmt->close();
+            throw new RuntimeException('Duplicate metadata update failed: ' . $error);
+        }
         $updateStmt->close();
+    } catch (InvalidArgumentException $error) {
+        import_kf_respond(400, [
+            'success' => false,
+            'message' => $error->getMessage(),
+        ]);
+    } catch (RuntimeException $error) {
+        import_kf_respond(500, [
+            'success' => false,
+            'message' => $error->getMessage(),
+        ]);
     }
     import_kf_respond(200, [
         'success' => true,
@@ -489,8 +565,8 @@ $thoughtExperienceNodeId = $sourceId;
 $insertSql = 'INSERT INTO externalized_contents
     (user_id, group_id, remarked_utterance_id, thought_experience_node_id, externalized_type,
      used_remarked_utterance, selected_contents, knowledge_fragment_content, stage1, stage2, stage3,
-     source_system, source_type, source_id, source_user_ref, raw_payload, discussed)
-    VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+     source_system, source_type, source_id, source_user_ref, title, raw_payload, discussed)
+    VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
 $stmt = $mysqli->prepare($insertSql);
 if (!$stmt) {
@@ -504,7 +580,7 @@ if (!$stmt) {
 $remarkedUtteranceId = null;
 $discussed = 'DONE';
 $stmt->bind_param(
-    'iissssssssssssss',
+    'iisssssssssssssss',
     $importUserId,
     $groupId,
     $remarkedUtteranceId,
@@ -519,6 +595,7 @@ $stmt->bind_param(
     $sourceType,
     $sourceId,
     $sourceUserRefValue,
+    $title,
     $rawPayloadValue,
     $discussed
 );

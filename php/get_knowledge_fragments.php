@@ -5,6 +5,7 @@
 
 // DB接続（index.php から既に読み込まれていても二重読込されないように）
 require_once __DIR__ . '/connect_db.php';
+require_once __DIR__ . '/kf_card_view.php';
 
 // このシステムの接続は mysqli を採用（$pdo ではありません）
 $__kfrag_list = [];
@@ -62,6 +63,8 @@ if (isset($mysqli) && $mysqli instanceof mysqli) {
             }
             $__kfrag_list[] = [
               'content' => $__val,
+              'raw_payload' => $row['raw_payload'] ?? null,
+              'source_system' => $row['source_system'] ?? null,
               'stage1' => isset($row['stage1']) ? (string)$row['stage1'] : '',
               'stage2' => isset($row['stage2']) ? (string)$row['stage2'] : '',
               'stage3' => isset($row['stage3']) ? (string)$row['stage3'] : '',
@@ -88,7 +91,9 @@ if (isset($mysqli) && $mysqli instanceof mysqli) {
         if ($resCol->num_rows > 0) { $contentCol = 'knowledge_fragments_content'; }
         $resCol->free();
       }
+      $payloadColumns = kf_card_payload_columns($mysqli);
       $sql = "SELECT ec.externalized_contents_id AS source_id,
+                   {$payloadColumns},
                      ec.`{$contentCol}` AS content,
                      ec.stage1, ec.stage2, ec.stage3,
                      ec.selected_contents,
@@ -114,6 +119,8 @@ if (isset($mysqli) && $mysqli instanceof mysqli) {
             }
             $__kfrag_list[] = [
               'content' => $__val,
+              'raw_payload' => $row['raw_payload'] ?? null,
+              'source_system' => $row['source_system'] ?? null,
               'stage1' => isset($row['stage1']) ? (string)$row['stage1'] : '',
               'stage2' => isset($row['stage2']) ? (string)$row['stage2'] : '',
               'stage3' => isset($row['stage3']) ? (string)$row['stage3'] : '',
@@ -226,13 +233,6 @@ if (!empty($__kfrag_list) && isset($mysqli) && $mysqli instanceof mysqli) {
             $__kfrag_raw = $__kfrag_list[$i];
             $__tmp = is_array($__kfrag_raw) && isset($__kfrag_raw['content']) ? trim((string)$__kfrag_raw['content']) : (is_string($__kfrag_raw) ? trim($__kfrag_raw) : '');
             if ($__tmp === '') { continue; }
-            $__s1 = is_array($__kfrag_raw) && isset($__kfrag_raw['stage1']) ? (string)$__kfrag_raw['stage1'] : '';
-            $__s2 = is_array($__kfrag_raw) && isset($__kfrag_raw['stage2']) ? (string)$__kfrag_raw['stage2'] : '';
-            $__s3 = is_array($__kfrag_raw) && isset($__kfrag_raw['stage3']) ? (string)$__kfrag_raw['stage3'] : '';
-            $__uname = is_array($__kfrag_raw) && isset($__kfrag_raw['user_name']) ? (string)$__kfrag_raw['user_name'] : $__current_user_name;
-            $__sourceType = is_array($__kfrag_raw) && isset($__kfrag_raw['source_type']) ? (string)$__kfrag_raw['source_type'] : 'experience';
-            $__selectedLabel = ($__sourceType === 'discussion') ? 'discussion' : '経験';
-            $__stage1Label = ($__sourceType === 'discussion') ? '【discussionの振り返り】' : '【経験の振り返り】';
             // PHPでは配列は新しい順(new->old)で格納されています。表示順はこのままに、番号は古い->1 に合わせる。
             $num = isset($__kfrag_raw['display_num']) ? intval($__kfrag_raw['display_num'], 10) : ($totalK - $i);
   ?>
@@ -253,21 +253,7 @@ if (!empty($__kfrag_list) && isset($mysqli) && $mysqli instanceof mysqli) {
       if($sourceType === 'experience' && $sourceId>0){ echo ' data-ext-id="'.$sourceId.'"'; }
       if($sourceId>0){ echo ' data-source-id="'.$sourceId.'"'; }
     ?>>
-        <div class="card-title"><?php echo htmlspecialchars($__uname, ENT_QUOTES, 'UTF-8'); ?> さん</div>
-        <div class="card-body"><?php echo nl2br(htmlspecialchars($__tmp, ENT_QUOTES, 'UTF-8')); ?></div>
-        <div class="card-detail" aria-hidden="true">
-          <?php 
-            $__sel = is_array($__kfrag_raw) && isset($__kfrag_raw['selected_contents']) ? trim((string)$__kfrag_raw['selected_contents']) : '';
-            if ($__sel !== '') { ?>
-              <div class="selected-utterance"><?php echo htmlspecialchars($__selectedLabel, ENT_QUOTES, 'UTF-8'); ?>: <?php echo nl2br(htmlspecialchars($__sel, ENT_QUOTES, 'UTF-8')); ?></div>
-          <?php } ?>
-          <div class="qa-item"><div class="qa-q"><?php echo htmlspecialchars($__stage1Label, ENT_QUOTES, 'UTF-8'); ?></div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s1, ENT_QUOTES, 'UTF-8')); ?></div></div>
-          <div class="qa-item"><div class="qa-q">【活動文脈固有の振り返り】</div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s2, ENT_QUOTES, 'UTF-8')); ?></div></div>
-          <div class="qa-item"><div class="qa-q">【研究固有の振り返り】</div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s3, ENT_QUOTES, 'UTF-8')); ?></div></div>
-        </div>
-        <div class="card-actions">
-          <button type="button" class="detail-button">詳細▼</button>
-        </div>
+        <?php kf_render_card_content($__kfrag_raw); ?>
       </div>
     </div>
   <?php } } else { ?>

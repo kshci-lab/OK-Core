@@ -2,6 +2,43 @@
 (function(){
   'use strict';
 
+  var fragmentDetailTrigger = null;
+  function closeFragmentDetail(){
+    var panel = document.getElementById('kf-detail-panel');
+    if(panel) panel.hidden = true;
+    if(fragmentDetailTrigger){
+      fragmentDetailTrigger.setAttribute('aria-expanded', 'false');
+      if(fragmentDetailTrigger.isConnected) fragmentDetailTrigger.focus();
+      fragmentDetailTrigger = null;
+    }
+  }
+
+  function showFragmentDetail(card, trigger){
+    var panel = document.getElementById('kf-detail-panel');
+    if(!panel){
+      panel = document.createElement('aside');
+      panel.id = 'kf-detail-panel';
+      panel.setAttribute('role', 'region');
+      panel.setAttribute('aria-labelledby', 'kf-detail-heading');
+      panel.innerHTML = '<header class="kf-detail-header"><div><h2 id="kf-detail-heading"></h2><p class="kf-detail-meta"></p></div><button type="button" class="kf-detail-close" aria-label="KF詳細を閉じる">閉じる</button></header><div class="kf-detail-scroll" tabindex="0" role="region" aria-label="KF詳細本文"></div>';
+      document.getElementById('shared_combination_overlay').appendChild(panel);
+      qs('.kf-detail-close', panel).addEventListener('click', closeFragmentDetail);
+      panel.addEventListener('keydown', function(event){
+        if(event.key === 'Escape'){ event.stopPropagation(); closeFragmentDetail(); }
+      });
+    }
+    if(fragmentDetailTrigger) fragmentDetailTrigger.setAttribute('aria-expanded', 'false');
+    fragmentDetailTrigger = trigger;
+    trigger.setAttribute('aria-expanded', 'true');
+    qs('#kf-detail-heading', panel).textContent = qs('.card-title', card).textContent;
+    qs('.kf-detail-meta', panel).textContent = qs('.card-author', card).textContent + ' / ' + qs('.card-kind', card).textContent;
+    var body = qs('.kf-detail-scroll', panel);
+    body.replaceChildren(qs('.kf-detail-template', card).content.cloneNode(true));
+    body.scrollTop = 0;
+    panel.hidden = false;
+    qs('.kf-detail-close', panel).focus();
+  }
+
   function qs(sel, root){ return (root || document).querySelector(sel); }
   function qsa(sel, root){ return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
   var SOURCE_TYPES = ['experience', 'discussion', 'SRL'];
@@ -655,6 +692,7 @@
 
   function replaceFragmentListHTML(workspace, html){
     if(!workspace) return;
+    closeFragmentDetail();
     // Remove old wrappers + list
     try{ qsa('.fragment-node-wrapper', workspace).forEach(function(w){ if(w && w.parentNode) w.parentNode.removeChild(w); }); }catch(_){ }
     try{ qsa('.knowledge-fragment-list', workspace).forEach(function(l){ if(l && l.parentNode) l.parentNode.removeChild(l); }); }catch(_){ }
@@ -1096,7 +1134,7 @@
     underway.classList.add('is-selected');
     setActiveFragment(fid, {
       discussed: 'UNDERWAY',
-      title: (qs('.card-body', underway) ? qs('.card-body', underway).textContent.trim() : null)
+      title: (qs('.card-title', underway) ? qs('.card-title', underway).textContent.trim() : null)
     });
     updateAdditionalHighlight(workspace);
 
@@ -1249,7 +1287,36 @@
       var h = w.offsetHeight || 128;
       maxBottom = Math.max(maxBottom, pos.top + h + 24);
     });
-    list.style.minHeight = Math.max(260, maxBottom) + 'px';
+    // Canvas mode uses absolutely positioned cards, so their height is not
+    // included in the list's normal flow. Keep the calculated canvas extent
+    // explicit; otherwise the CSS height:100% rule can clip the lower cards.
+    var canvasHeight = Math.max(260, maxBottom);
+
+    if(
+      list.classList.contains('knowledge-fragment-list') &&
+      list.closest('.knowledge_fragments_workspace') &&
+      list.closest('.knowledge_fragments_workspace').classList.contains('is-canvas-mode')
+    ){
+      list.style.minHeight = '0';
+      list.style.height = '';
+      list.style.flex = '1 1 auto';
+
+      // 絶対配置カードの最下端までスクロール範囲を確保する
+      var spacer = list.querySelector('.kfrag-canvas-spacer');
+      if(!spacer){
+        spacer = document.createElement('div');
+        spacer.className = 'kfrag-canvas-spacer';
+        spacer.setAttribute('aria-hidden', 'true');
+        list.appendChild(spacer);
+      }
+
+      spacer.style.position = 'relative';
+      spacer.style.left = '';
+      spacer.style.top = '';
+      spacer.style.width = '1px';
+      spacer.style.height = canvasHeight + 'px';
+      spacer.style.pointerEvents = 'none';
+    }
     if(forceReset) saveFragmentCanvasPositions(workspace);
   }
 
@@ -1758,11 +1825,8 @@
       }
       try{ card.style.width = ''; }catch(_){ }
 
-      // details hidden by default
-      var d = qs('.card-detail', card);
-      if(d){ d.setAttribute('aria-hidden','true'); d.style.display = 'none'; }
       var detailBtn = qs('.detail-button', card);
-      if(detailBtn){ detailBtn.textContent = '詳細▼'; }
+      if(detailBtn){ detailBtn.textContent = '詳細を見る'; }
     });
 
     bindFragmentReorder(workspace);
@@ -1777,12 +1841,9 @@
       if(btn){
         var card = btn.closest('.knowledge_fragment');
         if(!card) return;
-        var detail = qs('.card-detail', card);
-        if(!detail) return;
-        var open = (detail.getAttribute('aria-hidden') !== 'false');
-        detail.setAttribute('aria-hidden', open ? 'false' : 'true');
-        detail.style.display = open ? 'block' : 'none';
-        btn.textContent = open ? '▲閉じる' : '詳細▼';
+        e.preventDefault();
+        e.stopPropagation();
+        showFragmentDetail(card, btn);
         return;
       }
 
@@ -1834,7 +1895,7 @@
           setActiveFragment(ext, {
             discussed: discussed2,
             sourceType: selectedSourceType,
-            title: (qs('.card-body', frag) ? qs('.card-body', frag).textContent.trim() : null)
+            title: (qs('.card-title', frag) ? qs('.card-title', frag).textContent.trim() : null)
           });
           updateAdditionalHighlight(workspace);
           if(selectedSourceType === 'experience' && String(discussed2 || '').trim() === 'UNDERWAY'){

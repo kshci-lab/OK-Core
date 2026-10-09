@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../php/session_bootstrap.php';
 hcimlab_start_session();
 require_once __DIR__ . '/../php/hcimlab_sso.php';
+require_once __DIR__ . '/../php/sso_return.php';
 require_once __DIR__ . '/../php/connect_db.php';
 
 try {
@@ -82,7 +83,7 @@ try {
 
     unset($_SESSION['HCIMLAB_SSO_STATE'], $_SESSION['HCIMLAB_SSO_PKCE'], $_SESSION['HCIMLAB_SSO_NONCE'], $_SESSION['HCIMLAB_SSO_STARTED_AT'], $_SESSION['SSO_ERROR'], $_SESSION['HCIMLAB_SSO_FORCE_LOGIN']);
 
-    header('Location: ' . $baseUrl . '/index.php');
+    header('Location: ' . hcimlab_sso_consume_agent_return($baseUrl));
     exit;
 } catch (Throwable $e) {
     unset($_SESSION['HCIMLAB_SSO_STATE'], $_SESSION['HCIMLAB_SSO_PKCE'], $_SESSION['HCIMLAB_SSO_NONCE'], $_SESSION['HCIMLAB_SSO_STARTED_AT'], $_SESSION['HCIMLAB_SSO_FORCE_LOGIN']);

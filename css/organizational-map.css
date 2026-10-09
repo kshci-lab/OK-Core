@@ -535,8 +535,10 @@ input[type="checkbox"][name="check_organizational"]{
 }
 #shared_combination_overlay .knowledge_fragments_workspace.is-canvas-mode .knowledge-fragment-list{
 	position:relative;
-	min-height:360px;
+	min-height:0;
+	height:100%;
 	overflow:auto;
+	overscroll-behavior:contain;
 	padding:18px;
 	background:
 		linear-gradient(#f1f1f1 1px, transparent 1px),
@@ -1409,3 +1411,46 @@ body.is-fragment-canvas-dragging *{
 	#shared_combination_overlay .overlay_knowledge_tree{ max-height: 30vh; }
 	#shared_combination_overlay .message-list{ max-height: 30vh; }
 }
+
+/* Compact KF cards and a separate, non-modal detail pane. */
+#shared_combination_overlay .knowledge_fragment .card-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+#shared_combination_overlay .card-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; }
+#shared_combination_overlay .card-kind { font-weight: 600; }
+#kf-detail-panel {
+  position: fixed;
+  right: 16px;
+  top: 90px;
+  bottom: 20px;
+  width: min(440px, calc(100vw - 32px));
+  z-index: 10020;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #c8ced6;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px #0003;
+  color: #202936;
+  overflow: hidden;
+}
+#kf-detail-panel[hidden] { display: none; }
+.kf-detail-header { display: flex; align-items: flex-start; gap: 12px; padding: 18px; border-bottom: 1px solid #ddd; flex: 0 0 auto; max-height: 35%; overflow: auto; }
+.kf-detail-header > div { flex: 1; min-width: 0; }
+#kf-detail-heading { margin: 0; font-size: 18px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.kf-detail-meta { margin: 8px 0 0; font-size: 12px; }
+.kf-detail-close { flex: 0 0 auto; cursor: pointer; padding: 6px 10px; }
+.kf-detail-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 18px; }
+.kf-detail-scroll h3 { font-size: 14px; margin: 0 0 8px; }
+.kf-detail-scroll section { margin-bottom: 20px; }
+.kf-detail-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.7; }
+.kf-reflection { border-top: 1px solid #ddd; padding: 12px 0; }
+.kf-reflection summary { cursor: pointer; font-size: 14px; font-weight: 600; }
+.kf-reflection .kf-detail-text { margin-top: 12px; }
