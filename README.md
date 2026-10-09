@@ -110,6 +110,11 @@ For deployment, set the following environment variables instead of relying on th
 - `HCIMLAB_SSO_CLIENT_SECRET=...`
 - `HCIMLAB_SSO_DEV_AUTH=false`
 
+On the server, run `php scripts/check-sso-config.php` to inspect the effective
+SSO client ID, base URL, and redirect URI without printing the client secret.
+Register `https://archive.kshci-lab.net/software/OK-Core/auth/callback` as the
+redirect URI for the OK-Core client when deploying at that base URL.
+
 The development login and `/php/sso_debug.php` are disabled when `APP_ENV=production`.
 ## Verified separation status
 

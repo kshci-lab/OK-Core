@@ -55,6 +55,29 @@ if (file_exists($localConfigPath)) {
     }
 }
 
+// An explicitly configured deployment environment must take precedence over
+// a local config file that may have been copied from a development machine.
+$environmentOverrides = array(
+    'HCIMLAB_SSO_IDP_URL' => 'idp_url',
+    'HCIMLAB_SSO_CLIENT_ID' => 'client_id',
+    'HCIMLAB_SSO_CLIENT_SECRET' => 'client_secret',
+    'HCIMLAB_SSO_BASE_URL' => 'base_url',
+    'HCIMLAB_SSO_REDIRECT_URI' => 'redirect_uri',
+    'HCIMLAB_SSO_SCOPE' => 'scope',
+    'HCIMLAB_SSO_TOKEN_AUTH_METHOD' => 'token_auth_method',
+    'HCIMLAB_SSO_CA_BUNDLE' => 'ca_bundle',
+);
+foreach ($environmentOverrides as $environmentName => $configKey) {
+    $environmentValue = getenv($environmentName);
+    if ($environmentValue !== false) {
+        $config[$configKey] = $environmentValue;
+    }
+}
+$config['base_url'] = rtrim((string)$config['base_url'], '/');
+if (getenv('HCIMLAB_SSO_BASE_URL') !== false && getenv('HCIMLAB_SSO_REDIRECT_URI') === false) {
+    $config['redirect_uri'] = $config['base_url'] . '/auth/callback';
+}
+
 // Development-only helpers must never be enabled accidentally in production.
 // APP_ENV=production is the deployment switch used by the AWS environment.
 $appEnvironment = strtolower(trim((string)hcimlab_sso_env_or_default('APP_ENV', 'local')));
