@@ -4,6 +4,6 @@
 // FOREST_CONTEXT_API_BASE_URL and FOREST_CONTEXT_API_TOKEN environment variables.
 return [
     'base_url' => 'http://localhost:8888/forest-platform/api/v1',
-    // 'base_url' => 'http://archive.kshci-lab.net/software/forest-platform/api/v1',
+    // 'base_url' => 'https://archive.kshci-lab.net/software/forest-platform/api/v1',
     'token' => 'use-the-same-read-token-as-FOREST_CONTEXT_API_TOKEN-on-forest',
 ];
