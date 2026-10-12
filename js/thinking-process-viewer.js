@@ -6,6 +6,7 @@
     let requestSerial = 0;
     let cardMenu = null;
     let cardSourceId = '';
+    let cardSourceType = '';
 
     const byId = (id) => document.getElementById(id);
     const label = (value) => String(value == null ? '' : value)
@@ -59,6 +60,7 @@
     function hideCardMenu() {
         if (cardMenu) cardMenu.style.display = 'none';
         cardSourceId = '';
+        cardSourceType = '';
     }
 
     function bindFragmentCardMenu() {
@@ -73,8 +75,15 @@
         openButton.textContent = '思考過程表出化マップを表示';
         openButton.addEventListener('click', () => {
             const sourceId = cardSourceId;
+            const sourceType = cardSourceType;
             hideCardMenu();
             if (!/^\d+$/.test(sourceId)) return;
+            if (sourceType === 'discussion') {
+                if (typeof window.showDiscussionTranscript === 'function') {
+                    window.showDiscussionTranscript({ source_type: sourceType, source_record_id: sourceId });
+                }
+                return;
+            }
             const cooperationTab = byId('org-tab-cooperation');
             if (cooperationTab) cooperationTab.click();
             showThinkingProcessMap({ source_type: 'experience', source_record_id: sourceId });
@@ -83,16 +92,21 @@
         document.body.appendChild(cardMenu);
         workspace.addEventListener('contextmenu', (event) => {
             const card = event.target && event.target.closest
-                ? event.target.closest('.knowledge_fragment[data-source-type="experience"]') : null;
+                ? event.target.closest('.knowledge_fragment[data-source-type]') : null;
             if (!card || !workspace.contains(card)) return;
             const sourceId = String(card.getAttribute('data-source-id') || '');
-            if (!/^\d+$/.test(sourceId)) return;
+            const sourceType = String(card.getAttribute('data-source-type') || '');
+            if (!/^\d+$/.test(sourceId) || !['experience', 'discussion'].includes(sourceType)) return;
             event.preventDefault();
             cardSourceId = sourceId;
+            cardSourceType = sourceType;
+            openButton.textContent = sourceType === 'discussion'
+                ? '議論の文字起こしを表示' : '思考過程表出化マップを表示';
             cardMenu.style.display = 'block';
             const bounds = cardMenu.getBoundingClientRect();
             cardMenu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - bounds.width - 8)) + 'px';
             cardMenu.style.top = Math.max(8, Math.min(event.clientY, window.innerHeight - bounds.height - 8)) + 'px';
+            openButton.focus();
         });
         document.addEventListener('mousedown', (event) => {
             if (cardMenu && !cardMenu.contains(event.target)) hideCardMenu();

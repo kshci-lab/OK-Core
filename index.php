@@ -257,8 +257,35 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
     <div id="labelselect" class="compat-hidden"></div>
     <div id="accordion_discussion" class="compat-hidden"></div>
 
+    <dialog id="discussion-transcript-dialog" class="transcript-dialog" aria-labelledby="transcript-heading">
+        <div class="transcript-shell">
+            <header class="transcript-header">
+                <div>
+                    <h2 id="transcript-heading">議論の文字起こし</h2>
+                    <p id="transcript-kf-title" class="transcript-kf-title"></p>
+                </div>
+                <button type="button" id="transcript-close" aria-label="文字起こしを閉じる">×</button>
+            </header>
+            <div class="transcript-toolbar">
+                <label for="transcript-session">セッション</label>
+                <select id="transcript-session" disabled></select>
+                <button type="button" id="transcript-jump" disabled>KFに紐づく発言へ</button>
+            </div>
+            <p id="transcript-status" class="transcript-status" role="status" aria-live="polite"></p>
+            <div id="transcript-scroll" class="transcript-scroll" tabindex="0" aria-label="セッションの文字起こし">
+                <ol id="transcript-utterances" class="transcript-utterances"></ol>
+            </div>
+            <footer class="transcript-footer">
+                <button type="button" id="transcript-previous" disabled>前の発言</button>
+                <span id="transcript-page" aria-live="polite"></span>
+                <button type="button" id="transcript-next" disabled>次の発言</button>
+            </footer>
+        </div>
+    </dialog>
+
     <script src="js/organizational-map.js?v=<?php echo (int)filemtime(__DIR__ . '/js/organizational-map.js'); ?>"></script>
     <script src="js/thinking-process-viewer.js?v=<?php echo (int)filemtime(__DIR__ . '/js/thinking-process-viewer.js'); ?>"></script>
+    <script src="js/discussion-transcript-viewer.js?v=<?php echo (int)filemtime(__DIR__ . '/js/discussion-transcript-viewer.js'); ?>"></script>
     <script src="js/organizational-combination-tab.js?v=<?php echo (int)filemtime(__DIR__ . '/js/organizational-combination-tab.js'); ?>"></script>
 </body>
 </html>
