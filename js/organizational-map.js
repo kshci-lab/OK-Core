@@ -970,8 +970,10 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
             if (processMenu) {
                 const sourceNode = this.selectedOrganizationalNode;
                 processMenu.style.display = sourceNode
-                    && sourceNode.source_type === 'experience'
+                    && ['experience', 'discussion'].includes(sourceNode.source_type)
                     && /^\d+$/.test(String(sourceNode.source_record_id || '')) ? '' : 'none';
+                processMenu.textContent = sourceNode && sourceNode.source_type === 'discussion'
+                    ? '議論の文字起こしを表示' : '思考過程表出化マップを表示';
             }
             const pointerX = params.pointer.DOM.x;
             const pointerY = params.pointer.DOM.y;
@@ -1025,9 +1027,12 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
         if (!selectNodeId) return;
 
         const others_node = defaultOrganizational.nodes.get(selectNodeId);
-        if (!others_node || others_node.source_type !== 'experience') return;
-
-        console.log('view_otherprocessmap -> node:', others_node);
+        if (!others_node) return;
+        if (others_node.source_type === 'discussion') {
+            if (typeof window.showDiscussionTranscript === 'function') window.showDiscussionTranscript(others_node);
+            return;
+        }
+        if (others_node.source_type !== 'experience') return;
 
         // 他者の思考過程マップを開く（user_id が null の場合は既定動作に従う）
         try {
