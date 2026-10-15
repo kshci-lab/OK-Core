@@ -29,6 +29,10 @@ try {
         throw new RuntimeException('SSO callback does not contain an authorization code.');
     }
 
+    if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
+        throw new RuntimeException('OK-CoreのDBに接続できません。MySQLの起動状態とDB接続設定を確認してください。');
+    }
+
     $tokenAuthMethod = hcimlab_sso_token_auth_method();
     $authMethodsToTry = ($tokenAuthMethod === 'auto')
         ? array('post', 'basic')

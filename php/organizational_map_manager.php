@@ -123,8 +123,9 @@ if (!empty($user_ids_in_latest_group)) {
     $sql_nodes = "SELECT sn.id AS shared_node_id, sn.knowledge_group_id, ec.experience_knowledge_id, ec.experience_type, ec.thought_experience_node_id, ec.user_id, ec.selected_contents, ec.knowledge_fragment_content, ec.stage1, ec.stage2, ec.stage3
         FROM shared_nodes sn
         INNER JOIN experience_knowledges ec
-          ON ec.experience_knowledge_id = sn.experience_knowledge_id
-        WHERE sn.knowledge_group_id = $selected_group_id_sql
+          ON ec.experience_knowledge_id = sn.knowledge_fragment_id
+        WHERE sn.fragment_source_type = 'experience'
+            AND sn.knowledge_group_id = $selected_group_id_sql
             AND sn.deleted = 0
             AND ec.deleted = 0
             AND ec.knowledge_fragment_content IS NOT NULL
@@ -146,11 +147,6 @@ if (!empty($user_ids_in_latest_group)) {
         $hasExternalized = ($resT->num_rows > 0);
         $resT->free();
         if ($hasExternalized) {
-            $hasGroupColumn = false;
-            if ($resCol = $mysqli->query("SHOW COLUMNS FROM `externalized_contents` LIKE 'group_id'")) {
-                $hasGroupColumn = ($resCol->num_rows > 0);
-                $resCol->free();
-            }
             $contentCol = 'knowledge_fragment_content';
             if ($resCol = $mysqli->query("SHOW COLUMNS FROM `externalized_contents` LIKE 'knowledge_fragments_content'")) {
                 if ($resCol->num_rows > 0) { $contentCol = 'knowledge_fragments_content'; }
@@ -161,9 +157,11 @@ if (!empty($user_ids_in_latest_group)) {
                 WHERE ec.deleted = 0
                     AND ec.`{$contentCol}` IS NOT NULL
                     AND LENGTH(TRIM(ec.`{$contentCol}`)) > 0";
-            $sql_externalized .= $hasGroupColumn
-                ? " AND ec.group_id = $selected_group_id_sql"
-                : " AND 1 = 0";
+            $sql_externalized .= " AND EXISTS (SELECT 1 FROM shared_nodes sn
+                                               WHERE sn.knowledge_fragment_id = ec.externalized_contents_id
+                                                 AND sn.fragment_source_type = 'discussion'
+                                                 AND sn.knowledge_group_id = $selected_group_id_sql
+                                                 AND sn.deleted = 0)";
             $sql_externalized .= " ORDER BY ec.updated_at DESC, ec.externalized_contents_id DESC";
             if ($result_externalized = $mysqli->query($sql_externalized)) {
                 while ($row = $result_externalized->fetch_assoc()) {

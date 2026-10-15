@@ -51,12 +51,16 @@ function ok_core_group_has_fragments(mysqli $mysqli, string $groupId, string $so
     $in = implode(',', $ids);
     if ($sourceType === 'experience') {
         $sql = "SELECT DISTINCT ek.experience_knowledge_id AS id FROM shared_nodes sn
-                INNER JOIN experience_knowledges ek ON ek.experience_knowledge_id = sn.experience_knowledge_id
-                WHERE sn.knowledge_group_id = $group AND sn.deleted = 0 AND ek.deleted = 0
+                INNER JOIN experience_knowledges ek ON ek.experience_knowledge_id = sn.knowledge_fragment_id
+                WHERE sn.fragment_source_type = 'experience'
+                  AND sn.knowledge_group_id = $group AND sn.deleted = 0 AND ek.deleted = 0
                   AND ek.experience_knowledge_id IN ($in)";
     } else {
-        $sql = "SELECT externalized_contents_id AS id FROM externalized_contents
-                WHERE group_id = $group AND deleted = 0 AND externalized_contents_id IN ($in)";
+        $sql = "SELECT DISTINCT ec.externalized_contents_id AS id FROM shared_nodes sn
+                INNER JOIN externalized_contents ec ON ec.externalized_contents_id = sn.knowledge_fragment_id
+                WHERE sn.fragment_source_type = 'discussion'
+                  AND sn.knowledge_group_id = $group AND sn.deleted = 0 AND ec.deleted = 0
+                  AND ec.externalized_contents_id IN ($in)";
     }
     $result = $mysqli->query($sql);
     if (!$result) return false;

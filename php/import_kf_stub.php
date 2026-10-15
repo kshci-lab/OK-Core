@@ -5,6 +5,7 @@ ini_set('display_errors', 0);
 mysqli_report(MYSQLI_REPORT_OFF);
 
 require_once __DIR__ . '/connect_db.php';
+require_once __DIR__ . '/shared_fragment_storage.php';
 
 function import_kf_respond(int $statusCode, array $payload): void
 {
@@ -467,10 +468,18 @@ if (!$checkStmt->execute()) {
 $checkStmt->bind_result($existingId);
 if ($checkStmt->fetch()) {
     $checkStmt->close();
-    if ($updateStmt = $mysqli->prepare('UPDATE externalized_contents SET user_id = ?, source_user_ref = ?, raw_payload = ?, updated_at = NOW() WHERE externalized_contents_id = ?')) {
+    try {
+        $mysqli->begin_transaction();
+        $updateStmt = $mysqli->prepare('UPDATE externalized_contents SET user_id = ?, source_user_ref = ?, raw_payload = ?, updated_at = NOW() WHERE externalized_contents_id = ?');
+        if (!$updateStmt) throw new RuntimeException('fragment_update_prepare_failed');
         $updateStmt->bind_param('issi', $importUserId, $sourceUserRefValue, $rawPayloadValue, $existingId);
-        $updateStmt->execute();
+        if (!$updateStmt->execute()) throw new RuntimeException('fragment_update_failed');
         $updateStmt->close();
+        ok_core_register_discussion_share($mysqli, (int)$existingId, $groupId);
+        $mysqli->commit();
+    } catch (Throwable $error) {
+        $mysqli->rollback();
+        import_kf_respond(500, ['success' => false, 'message' => 'KFと共有先の更新に失敗しました。共有先グループとDB構造を確認してください。']);
     }
     import_kf_respond(200, [
         'success' => true,
@@ -523,18 +532,17 @@ $stmt->bind_param(
     $discussed
 );
 
-if (!$stmt->execute()) {
-    $error = $stmt->error;
+try {
+    $mysqli->begin_transaction();
+    if (!$stmt->execute()) throw new RuntimeException('fragment_insert_failed');
+    $externalizedContentsId = (int)$mysqli->insert_id;
     $stmt->close();
-    import_kf_respond(500, [
-        'success' => false,
-        'message' => 'Save failed',
-        'detail' => $error,
-    ]);
+    ok_core_register_discussion_share($mysqli, $externalizedContentsId, $groupId);
+    $mysqli->commit();
+} catch (Throwable $error) {
+    $mysqli->rollback();
+    import_kf_respond(500, ['success' => false, 'message' => 'KFと共有先の保存に失敗しました。共有先グループとDB構造を確認してください。']);
 }
-
-$externalizedContentsId = (int)$mysqli->insert_id;
-$stmt->close();
 
 import_kf_respond(200, [
     'success' => true,

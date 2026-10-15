@@ -49,11 +49,12 @@ try {
                 km.external_kf_id
            FROM shared_nodes sn
            INNER JOIN experience_knowledges ek
-              ON ek.experience_knowledge_id = sn.experience_knowledge_id
+              ON ek.experience_knowledge_id = sn.knowledge_fragment_id
            LEFT JOIN kf_source_mappings km
               ON km.experience_knowledge_id = ek.experience_knowledge_id
              AND km.source_system = ? AND km.source_deleted_at IS NULL
-          WHERE sn.knowledge_group_id = ? AND sn.deleted = 0
+          WHERE sn.fragment_source_type = \'experience\'
+            AND sn.knowledge_group_id = ? AND sn.deleted = 0
             AND ek.experience_knowledge_id = ? AND ek.deleted = 0
           LIMIT 1'
     );

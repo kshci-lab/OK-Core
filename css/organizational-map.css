@@ -529,8 +529,10 @@ input[type="checkbox"][name="check_organizational"]{
 }
 #shared_combination_overlay .knowledge_fragments_workspace.is-canvas-mode .knowledge-fragment-list{
 	position:relative;
-	min-height:360px;
+	flex:1 1 0;
+	min-height:0;
 	overflow:auto;
+	resize:none;
 	padding:18px;
 	background:
 		linear-gradient(#f1f1f1 1px, transparent 1px),

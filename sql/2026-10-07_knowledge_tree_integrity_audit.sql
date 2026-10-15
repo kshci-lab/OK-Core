@@ -42,7 +42,8 @@ FROM ok_core.knowledge_explorer_fragment_links AS link
 JOIN ok_core.knowledge_explorer AS ke
   ON ke.knowledge_node_id = link.knowledge_node_id AND ke.deleted = 0
 LEFT JOIN ok_core.shared_nodes AS sn
-  ON sn.experience_knowledge_id = link.fragment_source_id
+  ON sn.knowledge_fragment_id = link.fragment_source_id
+ AND sn.fragment_source_type = 'experience'
  AND sn.knowledge_group_id = ke.knowledge_group_id AND sn.deleted = 0
 LEFT JOIN ok_core.experience_knowledges AS ek
   ON ek.experience_knowledge_id = link.fragment_source_id AND ek.deleted = 0

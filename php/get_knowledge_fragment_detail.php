@@ -185,7 +185,8 @@ if ($idsByType['experience'] && table_exists($mysqli, 'experience_knowledges')) 
              WHERE ek.experience_knowledge_id IN ($placeholders)
                AND ek.deleted = 0
                AND EXISTS (SELECT 1 FROM shared_nodes sn
-                            WHERE sn.experience_knowledge_id = ek.experience_knowledge_id
+                            WHERE sn.knowledge_fragment_id = ek.experience_knowledge_id
+                              AND sn.fragment_source_type = 'experience'
                               AND sn.knowledge_group_id = ? AND sn.deleted = 0)";
     $types = str_repeat('i', count($ids)) . 'i';
     if ($stmt = $mysqli->prepare($sql)) {
@@ -218,7 +219,10 @@ if ($idsByType['discussion'] && table_exists($mysqli, 'externalized_contents')) 
               LEFT JOIN users u ON u.user_id = ec.user_id
              WHERE ec.externalized_contents_id IN ($placeholders)
                AND ec.deleted = 0
-               AND ec.group_id = ?";
+               AND EXISTS (SELECT 1 FROM shared_nodes sn
+                            WHERE sn.knowledge_fragment_id = ec.externalized_contents_id
+                              AND sn.fragment_source_type = 'discussion'
+                              AND sn.knowledge_group_id = ? AND sn.deleted = 0)";
     $types = str_repeat('i', count($ids)) . 'i';
     if ($stmt = $mysqli->prepare($sql)) {
         $bind = [$types];
