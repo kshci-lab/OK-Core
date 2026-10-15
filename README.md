@@ -73,28 +73,7 @@ Forest-Core should eventually write produced KFs to OK-Core through a small impo
 
 Apply `sql/2026-10-15_rename_shared_nodes_knowledge_fragment_id.sql` when upgrading an existing shared table. See [the migration notes](docs/shared-nodes-column-rename.md) for the matching Forest-platform change and the scope of this rename.
 
-If `ok_core.shared_nodes` was already created before the unique key was added to the schema, run this once in phpMyAdmin after the column rename:
-
-```sql
-SELECT knowledge_fragment_id, knowledge_group_id, COUNT(*) AS duplicate_count
-FROM ok_core.shared_nodes
-WHERE knowledge_fragment_id IS NOT NULL
-GROUP BY knowledge_fragment_id, knowledge_group_id
-HAVING COUNT(*) > 1;
-
-DELETE sn
-FROM ok_core.shared_nodes sn
-JOIN ok_core.shared_nodes keep
-  ON keep.knowledge_fragment_id = sn.knowledge_fragment_id
- AND keep.knowledge_group_id = sn.knowledge_group_id
- AND keep.id < sn.id
-WHERE sn.knowledge_fragment_id IS NOT NULL;
-
-ALTER TABLE ok_core.shared_nodes
-  ADD UNIQUE KEY ux_shared_nodes_experience_group (knowledge_fragment_id, knowledge_group_id);
-```
-
-The `DELETE` keeps the lowest `id` for each duplicate `(knowledge_fragment_id, knowledge_group_id)` pair and removes the later duplicates.
+For discussion KF sharing, also apply `sql/2026-10-15_shared_nodes_discussion.sql`. See [the typed sharing notes](docs/shared-nodes-discussion.md). The current unique key is `(fragment_source_type, knowledge_fragment_id, knowledge_group_id)`; do not recreate the old two-column unique key.
 
 ## SSO redirect URIs
 

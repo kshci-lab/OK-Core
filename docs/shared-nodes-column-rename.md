@@ -1,5 +1,7 @@
 # shared_nodesのKF参照列の改名（2026-10-15）
 
+追記：discussionの共有も統一する変更を適用しました。以下は改名時点の記録です。現在の共有テーブルの使い方と追加SQLは[discussion共有への対応](shared-nodes-discussion.md)を参照してください。
+
 ## 変更内容
 
 OK-CoreとForest-platformの両方で、`shared_nodes.experience_knowledge_id`を`shared_nodes.knowledge_fragment_id`へ改名します。参照している既存のKF ID、行ID、共有先、削除状態、カラムの型・NULL可否・デフォルト値を維持します。列を利用するインデックスはDBが新しい列名へ追従します。インデックス自体の既存の名前は保持します。

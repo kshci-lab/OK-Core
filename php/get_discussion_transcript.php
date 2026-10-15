@@ -45,9 +45,12 @@ try {
         ok_core_transcript_reply(403, ['error' => 'forbidden_group', 'message' => 'この組織の閲覧権限がありません。']);
     }
     $rows = discussion_transcript_rows($mysqli,
-        "SELECT source_system, source_id FROM externalized_contents
-          WHERE externalized_contents_id = ? AND group_id = ? AND deleted = 0
-            AND externalized_type = 'discussion'", [$fragmentId, $groupId]);
+        "SELECT ec.source_system, ec.source_id FROM externalized_contents ec
+          WHERE ec.externalized_contents_id = ? AND ec.deleted = 0 AND ec.externalized_type = 'discussion'
+            AND EXISTS (SELECT 1 FROM shared_nodes sn
+                         WHERE sn.knowledge_fragment_id = ec.externalized_contents_id
+                           AND sn.fragment_source_type = 'discussion'
+                           AND sn.knowledge_group_id = ? AND sn.deleted = 0)", [$fragmentId, $groupId]);
     if (!$rows) {
         ok_core_transcript_reply(404, ['error' => 'fragment_not_shared', 'message' => 'この組織に共有されたdiscussion KFが見つかりません。']);
     }

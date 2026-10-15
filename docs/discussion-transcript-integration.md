@@ -14,7 +14,7 @@
 
 ブラウザー → OK-Core内の`php/get_discussion_transcript.php` → 産出元の`hci_knowledge_db`へ直接接続します。産出元のAPIやプログラムは呼び出しません。
 
-OK-Coreのログインと有効なグループ所属を確認し、そのグループの`externalized_contents`に保存されたdiscussion KFだけを参照できます。ブラウザーから任意の産出元KF IDや任意のセッションだけを指定して取得することはできません。
+OK-Coreのログインと有効なグループ所属を確認し、`shared_nodes`で`fragment_source_type='discussion'`としてそのグループへ共有されたKFだけを参照できます。`externalized_contents.group_id`は閲覧権限に使用しません。ブラウザーから任意の産出元KF IDや任意のセッションだけを指定して取得することはできません。
 
 参照先KFはOK-Coreに保存された`source_system`と`source_id`で特定します。既存の`discussion-kf-system` / `knowledge_fragment_4`形式と数値IDに対応します。OK-Core側の`externalized_contents_id`を産出元KFのIDとみなす処理はありません。
 
@@ -64,7 +64,7 @@ OK-Coreのログインと有効なグループ所属を確認し、そのグル�
 
 デプロイ対象は`index.php`、`css/ok-core.css`、`js/organizational-map.js`、`js/thinking-process-viewer.js`、`js/discussion-transcript-viewer.js`、`php/get_discussion_transcript.php`、`php/discussion_transcript_reader.php`です。加えてサーバー固有の`php/discussion_transcript_local.php`を用意します。ローカル開発用の接続設定をAWSへそのまま配置しないでください。
 
-2026-10-12に確認したローカルDBでは、インポート済みdiscussion KFのgroup_idが0でした。現在のグループ一覧に出ないKFは、正しい共有先グループを産出元の送信設定で指定するか、既存の共有データを確認してください。この機能はgroup_idを自動変更しません。また、産出元KF 1〜3の関連発言はsession_id未登録でした。これらはセッション特定不可として表示します。
+discussion共有の判定には[種別付きshared_nodesへの移行](shared-nodes-discussion.md)が必要です。共有先は産出元の送信設定またはshared_nodesで指定します。外部化テーブルのgroup_idが0でも、有効なdiscussion共有行があれば参照できます。また、2026-10-12に確認した産出元KF 1〜3の関連発言はsession_id未登録でした。これらはセッション特定不可として表示します。
 
 今回の実装は産出元DBのテーブル構造に依存する暫定アダプターです。将来APIへ移行する場合は、`discussion_transcript_reader.php`の取得処理を差し替え、現在の閲覧権限の確認とUIのレスポンス形式を引き継げます。
 
