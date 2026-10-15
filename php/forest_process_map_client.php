@@ -36,11 +36,16 @@ function forest_process_map_config(): array
     return $config;
 }
 
-function forest_process_map_fetch(int $externalKfId, string $actingSub, int $groupId): array
+function forest_process_map_fetch(int $externalKfId, string $actingSub, int $groupId,
+    string $sourceReference = '', string $sourceType = ''): array
 {
     if ($externalKfId <= 0 || $groupId <= 0 || $actingSub === '' || strlen($actingSub) > 191
         || strpbrk($actingSub, "\r\n") !== false) {
         throw new ForestProcessMapException('参照するKFまたはユーザーが正しくありません。', 400, 'INVALID_REFERENCE');
+    }
+    if (strlen($sourceReference) > 191 || strlen($sourceType) > 64
+        || strpbrk($sourceReference . $sourceType, "\r\n") !== false) {
+        throw new ForestProcessMapException('元ノードの参照が正しくありません。', 400, 'INVALID_REFERENCE');
     }
     $config = forest_process_map_config();
     if ($config['base_url'] === '' || $config['token'] === '') {
@@ -59,6 +64,7 @@ function forest_process_map_fetch(int $externalKfId, string $actingSub, int $gro
     }
     $proofTime = (string)time();
     $proofPayload = "GET\n{$externalKfId}\n{$groupId}\n{$actingSub}\n{$proofTime}";
+    if ($sourceReference !== '') $proofPayload .= "\n{$sourceReference}\n{$sourceType}";
     $proof = hash_hmac('sha256', $proofPayload, $signingToken);
 
     $url = $config['base_url'] . '/knowledge-fragments/' . $externalKfId . '/thinking-process-map';
@@ -79,6 +85,8 @@ function forest_process_map_fetch(int $externalKfId, string $actingSub, int $gro
             'X-Knowledge-Group-Id: ' . $groupId,
             'X-OK-Core-Proof-Time: ' . $proofTime,
             'X-OK-Core-Proof: ' . $proof,
+            'X-KF-Source-Reference: ' . $sourceReference,
+            'X-KF-Source-Type: ' . $sourceType,
             'X-Request-Id: ' . $requestId,
         ],
     ];

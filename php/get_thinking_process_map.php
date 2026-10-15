@@ -45,7 +45,8 @@ try {
     $fragmentId = (int)$fragmentRaw;
     $groupId = (int)$groupRaw;
     $statement = $mysqli->prepare(
-        'SELECT ek.experience_knowledge_id, ek.thought_experience_node_id,
+        'SELECT ek.experience_knowledge_id, ek.thought_experience_node_id, ek.experience_type,
+                ek.knowledge_fragment_content,
                 km.external_kf_id
            FROM shared_nodes sn
            INNER JOIN experience_knowledges ek
@@ -77,17 +78,19 @@ try {
     if ($mappedId !== '' && (!ctype_digit($mappedId) || (int)$mappedId <= 0)) {
         ok_core_process_map_reply(404, ['error' => 'source_fragment_unavailable']);
     }
-    // Older manually migrated KFs retained their Forest ID and source node ID.
-    // The source node must match before accepting that legacy ID as a fallback.
+    // Legacy migrations may retain a node reference without retaining the Forest KF ID.
     if ($mappedId === '' && $legacyReference === '') {
         ok_core_process_map_reply(404, ['error' => 'source_fragment_unavailable']);
     }
     $externalId = $mappedId !== '' ? (int)$mappedId : $fragmentId;
-    $map = forest_process_map_fetch($externalId, $actingSub, $groupId);
+    $map = forest_process_map_fetch($externalId, $actingSub, $groupId,
+        $mappedId === '' ? $legacyReference : '',
+        $mappedId === '' ? (string)$fragment['experience_type'] : '');
     if ((string)($map['external_kf_id'] ?? '') !== (string)$externalId
         || ($mappedId === '' && (string)($map['source_reference'] ?? '') !== $legacyReference)) {
         ok_core_process_map_reply(502, ['error' => 'source_identity_mismatch']);
     }
+    $map['summary'] = (string)$fragment['knowledge_fragment_content'];
     ok_core_process_map_reply(200, ['status' => 'ok', 'map' => $map]);
 } catch (ForestProcessMapException $error) {
     ok_core_process_map_reply($error->httpStatus, [

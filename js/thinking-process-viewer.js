@@ -295,9 +295,12 @@
             if (!response.ok || result.status !== 'ok' || !result.map) {
                 const messages = {
                     source_fragment_unavailable: 'このKFにはForestの思考過程マップへの参照がありません。',
-                    PROCESS_MAP_NOT_FOUND: 'Forest側の思考過程マップが見つかりません。',
+                    PROCESS_MAP_NOT_FOUND: 'Forest側に元KFまたは対応する思考過程マップが見つかりません。',
                     FOREST_NOT_CONFIGURED: 'Forest参照APIが設定されていません。',
                     PROCESS_MAP_FORBIDDEN: 'この思考過程マップを閲覧する権限がありません。',
+                    forbidden_group: 'このOK-Coreグループの閲覧権限がありません。',
+                    fragment_not_shared: 'このKFは選択中のOK-Coreグループに共有されていません。',
+                    VIEWER_PROOF_INVALID: 'OK-Coreの閲覧確認をForestで検証できません。両システムのAPI設定とコードを確認してください。',
                 };
                 setStatus(messages[result.error] || result.message || '思考過程マップを読み込めません。', true);
                 return;
