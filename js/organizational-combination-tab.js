@@ -1095,22 +1095,31 @@
     if(!fid || isNaN(fid) || fid <= 0){ if(done) done(false); return; }
 
     var seq = ++window._kfragRestoreSeq;
+    var sourceType = getActiveFragmentSourceType() || 'experience';
+    var groupId = getSelectedGroupId();
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', 'php/get_discussion_targets.php?fragment_id=' + encodeURIComponent(String(fid)), true);
+    xhr.open('GET', 'php/get_discussion_targets.php?fragment_id=' + encodeURIComponent(String(fid))
+      + '&fragment_source_type=' + encodeURIComponent(sourceType) + '&group_id=' + encodeURIComponent(groupId), true);
     xhr.onreadystatechange = function(){
       if(xhr.readyState !== 4) return;
       if(seq !== window._kfragRestoreSeq){ if(done) done(false); return; } // stale
       if(getActiveFragmentId() !== fid){ if(done) done(false); return; } // selection changed
+      if(getActiveFragmentSourceType() !== sourceType || getSelectedGroupId() !== groupId){ if(done) done(false); return; }
 
       if(xhr.status !== 200){ if(done) done(false); return; }
       var data = null;
       try{ data = JSON.parse(xhr.responseText || '{}'); }catch(_){ data = null; }
       if(!data || data.status !== 'ok' || !Array.isArray(data.targets)){ if(done) done(false); return; }
 
-      var ids = _normalizeIdList(fid, data.targets.map(function(x){ return String(x); }));
+      var primaryRef = makeKfragRef(sourceType, fid);
+      var refs = Array.isArray(data.fragment_refs) ? splitKfragRefs(data.fragment_refs.join(','))
+        : data.targets.map(function(id){ return makeKfragRef(sourceType, id); });
+      refs = [primaryRef].concat(refs.filter(function(ref){ return ref !== primaryRef; }));
+      var ids = refs.filter(function(ref){ return ref.indexOf('experience:') === 0; })
+        .map(function(ref){ return ref.split(':')[1]; });
       window.kfrag_add_selected = window.kfrag_add_selected || { ext: [], kfid: [] };
-      window.kfrag_add_selected.ext = ids.slice(1);
-      window.kfrag_add_selected.kfid = ids.slice(1).map(function(id){ return makeKfragRef('experience', id); }).filter(Boolean);
+      window.kfrag_add_selected.ext = ids.filter(function(id){ return sourceType !== 'experience' || String(id) !== String(fid); });
+      window.kfrag_add_selected.kfid = refs.slice(1);
 
       // When UNDERWAY, lock the selection set to the latest stored target list.
       if(String(discussedStatus || '').trim() === 'UNDERWAY'){
@@ -1740,12 +1749,12 @@
     updateKfragButtons();
   }
 
-  function toggleAdditionalSelection(workspace, extId){
+  function toggleAdditionalSelection(workspace, extId, selectedSourceType){
     if(!extId) return;
-    var sourceType = getActiveFragmentSourceType() || 'experience';
+    var sourceType = selectedSourceType || getActiveFragmentSourceType() || 'experience';
     var primary = getActiveFragmentId();
     var s = String(extId);
-    if(primary !== null && String(primary) === s) return;
+    if(primary !== null && String(primary) === s && getActiveFragmentSourceType() === sourceType) return;
     window.kfrag_add_selected = window.kfrag_add_selected || { ext: [], kfid: [] };
     var ref = makeKfragRef(sourceType, s);
     var arr = window.kfrag_add_selected.kfid;
@@ -1861,9 +1870,9 @@
           }catch(_){ }
           // If discussion is underway, keep the selection set fixed.
           // Allow toggling additional only when add-select mode is on.
-          if(selectedSourceType === 'experience' && String(window.activeKnowledgeFragmentDiscussed || '').trim() === 'UNDERWAY'){
+          if(String(window.activeKnowledgeFragmentDiscussed || '').trim() === 'UNDERWAY'){
             if(window.kfrag_add_select_mode){
-              toggleAdditionalSelection(workspace, String(ext));
+              toggleAdditionalSelection(workspace, String(ext), selectedSourceType);
               loadDiscussion();
             } else {
               loadDiscussion();
@@ -1871,11 +1880,10 @@
             return;
           }
           var primary = getActiveFragmentId();
-          var primarySourceType = getActiveFragmentSourceType();
           // add-select mode: keep primary, toggle additional
-          if(window.kfrag_add_select_mode && primary !== null && String(primary) !== String(ext) && primarySourceType === selectedSourceType){
+          if(window.kfrag_add_select_mode && primary !== null){
             // mark wrapper additional selection
-            toggleAdditionalSelection(workspace, String(ext));
+            toggleAdditionalSelection(workspace, String(ext), selectedSourceType);
             loadDiscussion();
             return;
           }
@@ -1892,7 +1900,7 @@
             title: (qs('.card-body', frag) ? qs('.card-body', frag).textContent.trim() : null)
           });
           updateAdditionalHighlight(workspace);
-          if(selectedSourceType === 'experience' && String(discussed2 || '').trim() === 'UNDERWAY'){
+          if(String(discussed2 || '').trim() === 'UNDERWAY'){
             // Restore latest multi-fragment targets from discussion_history (CSV) so reload still works.
             restoreDiscussionTargetsForPrimary(ext, workspace, discussed2, function(){
               loadDiscussion();
@@ -2491,7 +2499,8 @@
       var linkInput = document.createElement('input');
       linkInput.type = 'text';
       linkInput.className = 'knowledge-edit-control knowledge-edit-links';
-      linkInput.value = splitKfragIds(fragmentIds).join(',');
+      linkInput.value = getNodeKfragRefs(nodeEl).join(',');
+      linkInput.placeholder = 'experience:11177,discussion:9';
       linkLabel.appendChild(linkInput);
 
       var reflectBtn = document.createElement('button');
@@ -2499,7 +2508,7 @@
       reflectBtn.className = 'knowledge-edit-reflect';
       reflectBtn.textContent = '現在選択中のKFを反映';
       reflectBtn.addEventListener('click', function(){
-        linkInput.value = getSelectedFragmentIds().join(',');
+        linkInput.value = getSelectedFragmentRefs().join(',');
       }, false);
       linkRow.appendChild(linkLabel);
       linkRow.appendChild(reflectBtn);
@@ -2546,7 +2555,13 @@
         var newWhy = String(whyField.input.value || '').trim();
         var newBasis = String(basisField.input.value || '').trim();
         var newComment = String(commentInput.value || '').trim();
-        var ids = splitKfragIds(linkInput.value).join(',');
+        var rawRefs = String(linkInput.value || '').split(',').map(function(ref){ return ref.trim(); }).filter(Boolean);
+        var refs = rawRefs.map(function(ref){ return /^\d+$/.test(ref) ? 'experience:' + ref : ref; });
+        if(refs.some(function(ref){ return !/^(experience|discussion):[1-9]\d*$/.test(ref); })){
+          feedback.textContent = '接続KFはexperience:IDまたはdiscussion:IDで指定してください';
+          return;
+        }
+        var ids = refs.filter(function(ref){ return ref.indexOf('experience:') === 0; }).map(function(ref){ return ref.split(':')[1]; }).join(',');
         if(!newTitle){
           feedback.textContent = 'タイトルを入力してください';
           return;
@@ -2564,6 +2579,7 @@
         fd.append('comment', newComment);
         fd.append('knowledge_fragment_id', ids);
         fd.append('fragment_source_type', 'experience');
+        fd.append('fragment_refs', JSON.stringify(refs));
         var gid = getSelectedGroupId();
         if(gid) fd.append('group_id', gid);
 
@@ -2594,7 +2610,7 @@
           if(titleEl) titleEl.textContent = newTitle;
           syncKnowledgeStructureBlock(nodeEl);
           var ws = document.getElementById('knowledge_fragments_workspace');
-          if(ws) updateKnowledgeConnectionOverlay(ws, splitKfragIds(ids), newTitle);
+          if(ws) updateKnowledgeConnectionOverlay(ws, refs.map(function(ref){ return ref.split(':')[1]; }), newTitle, refs);
           panel.style.display = 'none';
           toggleBtn.style.display = '';
           loadKnowledgeTree();
@@ -2634,7 +2650,8 @@
       if(!primaryId) return;
 
       window.kfrag_add_selected = window.kfrag_add_selected || { ext: [], kfid: [] };
-      window.kfrag_add_selected.ext = primaryType === 'experience' ? parts.slice(1) : [];
+      window.kfrag_add_selected.ext = refs.slice(1).filter(function(ref){ return ref.indexOf('experience:') === 0; })
+        .map(function(ref){ return ref.split(':')[1]; });
       window.kfrag_add_selected.kfid = refs.slice(1);
       // If discussion is underway, keep display list frozen to the current selection set.
       // Otherwise ensure display list is cleared so additional selections are shown.
@@ -2900,8 +2917,9 @@
     var btn = document.getElementById('fragment-discussed-toggle');
     if(btn){
       btn.addEventListener('click', function(){
-        var ids = getSelectedFragmentSourceIds();
-        if(ids.length === 0){
+        var refs = getSelectedFragmentRefs();
+        var ids = refs.map(function(ref){ return ref.split(':')[1]; });
+        if(refs.length === 0){
           if(window.alert) alert('議論対象とするフラグメントを選択してください');
           return;
         }
@@ -2911,16 +2929,18 @@
         var next = (cur === 'YET') ? 'UNDERWAY' : (cur === 'UNDERWAY') ? 'DONE' : 'YET';
 
         // update all selected fragments
-        var pending = ids.length;
+        var pending = refs.length;
         var anyFail = false;
-        var activeSourceType = getActiveFragmentSourceType() || 'experience';
-        ids.forEach(function(fid){
+        refs.forEach(function(ref){
+          var activeSourceType = ref.split(':')[0];
+          var fid = ref.split(':')[1];
           var fd = new FormData();
           if(activeSourceType === 'experience') fd.append('experience_knowledge_id', String(fid));
           else if(activeSourceType === 'discussion') fd.append('externalized_contents_id', String(fid));
           else fd.append('srl_id', String(fid));
           fd.append('fragment_source_type', activeSourceType);
           fd.append('status', next);
+          fd.append('group_id', getSelectedGroupId());
           var xhr = new XMLHttpRequest();
           xhr.open('POST', 'php/update_discussed_status.php', true);
           xhr.onreadystatechange = function(){
@@ -2947,13 +2967,14 @@
               }
               var ws = document.getElementById('knowledge_fragments_workspace');
               if(ws){
-                ids.forEach(function(id2){
-                  var card2 = findFragmentCard(ws, activeSourceType, id2);
+                refs.forEach(function(ref2){
+                  var card2 = findFragmentCard(ws, ref2.split(':')[0], ref2.split(':')[1]);
                   if(card2){ try{ card2.setAttribute('data-discussed', next); }catch(_){ } }
                 });
                 updateFragmentDiscussedIndicators(ws);
                 updateAdditionalHighlight(ws);
                 updateFragmentSelectedUI();
+                loadKfragRelations(ws);
               }
               updateDiscussedButton();
             }
@@ -3018,7 +3039,8 @@
       if(node_comment){ fd.append('comment', node_comment); }
       var gid = getSelectedGroupId();
       if(gid) fd.append('group_id', gid);
-      // Link to selected fragments (primary + additional) as CSV (fukushima-system behavior)
+      // Preserve each selected KF's source, including equal numeric IDs.
+      fd.append('fragment_refs', JSON.stringify(getSelectedFragmentRefs()));
       var ids = getSelectedFragmentSourceIds();
       var sourceType = getActiveFragmentSourceType() || 'experience';
       if(ids.length){
@@ -3075,6 +3097,7 @@
       fd.append('content', text);
       fd.append('knowledge_fragment_id', ids.join(','));
       fd.append('fragment_source_type', sourceType);
+      fd.append('fragment_refs', JSON.stringify(getSelectedFragmentRefs()));
       fd.append('group_id', getSelectedGroupId());
       var xhr = new XMLHttpRequest();
       xhr.open('POST', 'php/save_discussion_history.php', true);
@@ -3092,6 +3115,7 @@
         }
         input.value = '';
         loadDiscussion({ force: true, forceScroll: true });
+        loadKfragRelations(document.getElementById('knowledge_fragments_workspace'));
       };
       xhr.send(fd);
     }, false);
@@ -3119,8 +3143,9 @@
     if(!list) return;
     var sourceType = getActiveFragmentSourceType() || 'experience';
     var ids = getSelectedFragmentSourceIds();
+    var refs = getSelectedFragmentRefs();
     var groupId = getSelectedGroupId();
-    var selectionKey = [groupId, sourceType, ids.join(',')].join(':');
+    var selectionKey = [groupId, refs.join(',')].join(':');
     var requestSerial = ++_discussionRequestSerial;
     if(ids.length === 0){
       list.removeAttribute('data-discussion-signature');
@@ -3142,13 +3167,14 @@
     var url = 'php/get_discussion_history.php?limit=200';
     url += '&fragment_id=' + encodeURIComponent(ids.join(','));
     url += '&fragment_source_type=' + encodeURIComponent(sourceType);
+    url += '&fragment_refs=' + encodeURIComponent(JSON.stringify(refs));
     url += '&group_id=' + encodeURIComponent(groupId);
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.onreadystatechange = function(){
       if(xhr.readyState !== 4) return;
       if(refreshButton) refreshButton.disabled = false;
-      if(requestSerial !== _discussionRequestSerial || selectionKey !== [getSelectedGroupId(), getActiveFragmentSourceType() || 'experience', getSelectedFragmentSourceIds().join(',')].join(':')) return;
+      if(requestSerial !== _discussionRequestSerial || selectionKey !== [getSelectedGroupId(), getSelectedFragmentRefs().join(',')].join(':')) return;
       if(xhr.status !== 200){
         if(!options.silent) list.textContent = '読み込みに失敗しました';
         return;

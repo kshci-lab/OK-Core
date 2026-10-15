@@ -121,19 +121,6 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
                 <div id="myOrganizationalnetwork"></div>
             </div>
 
-            <div id="process_others_network_container" class="related-process-pane" oncontextmenu="return false;">
-                <div id="othersProcessnetwork_area">
-                    <div id="buttoncluster" class="network-toolbar">
-                        <button type="button" class="area_close" id="area_close" aria-label="思考過程マップを閉じる">×</button>
-                        <button type="button" class="thinkingProcess_network_button" id="process_ZoomIn">拡大</button>
-                        <button type="button" class="thinkingProcess_network_button" id="process_ZoomOut">縮小</button>
-                        <div id="others_conceptdisplay"></div>
-                        <button type="button" class="thinkingProcess_network_button" id="process_Fit">全体表示</button>
-                        <span id="others_process_status" role="status" aria-live="polite"></span>
-                    </div>
-                    <div id="othersProcessnetwork"></div>
-                </div>
-            </div>
         </section>
 
         <section id="org-tabpanel-combination" class="org-subtab-panel ok-panel" role="tabpanel" aria-labelledby="org-tab-combination" hidden>
@@ -250,6 +237,20 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
             </div>
         </section>
     </main>
+
+    <dialog id="process_others_network_container" class="process-map-dialog" aria-labelledby="others_conceptdisplay" oncontextmenu="return false;">
+        <div id="othersProcessnetwork_area">
+            <div id="process-map-toolbar" class="network-toolbar">
+                <h2 id="others_conceptdisplay">思考過程表出化マップ</h2>
+                <button type="button" class="thinkingProcess_network_button" id="process_ZoomIn">拡大</button>
+                <button type="button" class="thinkingProcess_network_button" id="process_ZoomOut">縮小</button>
+                <button type="button" class="thinkingProcess_network_button" id="process_Fit">全体表示</button>
+                <button type="button" class="area_close" id="area_close" aria-label="思考過程マップを閉じる" autofocus>×</button>
+            </div>
+            <div id="others_process_status" role="status" aria-live="polite"></div>
+            <div id="othersProcessnetwork"></div>
+        </div>
+    </dialog>
 
     <div id="trigger_display" class="compat-hidden"></div>
     <div id="lesson_display" class="compat-hidden"></div>

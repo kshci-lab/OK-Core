@@ -4,6 +4,7 @@ header('Content-Type: application/json; charset=UTF-8');
 ini_set('display_errors', '0');
 require_once __DIR__ . '/session_bootstrap.php';
 require_once __DIR__ . '/knowledge_group_access.php';
+require_once __DIR__ . '/fragment_references.php';
 hcimlab_start_session();
 require_once __DIR__ . '/connect_db.php';
 
@@ -29,19 +30,12 @@ if ($parentRaw !== '' && $parentRaw !== '0' && (!ctype_digit($parentRaw) || (int
 }
 $parentId = $parentRaw === '' || $parentRaw === '0' ? null : (int)$parentRaw;
 $parentLabel = trim((string)($_POST['parent_label'] ?? ''));
-$sourceType = strtolower(trim((string)($_POST['fragment_source_type'] ?? 'experience')));
-if ($sourceType === 'externalized') $sourceType = 'discussion';
-if (!in_array($sourceType, ['experience', 'discussion'], true)) node_create_reply(400, 'error', 'fragment_source_type が不正です');
-$rawIds = $_POST['knowledge_fragment_id'] ?? '';
-$parts = is_array($rawIds) ? $rawIds : explode(',', (string)$rawIds);
-$fragmentIds = [];
-foreach ($parts as $part) {
-    $value = trim((string)$part);
-    if ($value === '') continue;
-    if (!ctype_digit($value) || (int)$value <= 0) node_create_reply(400, 'error', 'knowledge_fragment_id が不正です');
-    $fragmentIds[(int)$value] = (int)$value;
+try {
+    $fragmentRefs = ok_core_request_fragment_refs($_POST);
+} catch (InvalidArgumentException | JsonException $error) {
+    node_create_reply(400, 'error', $error->getMessage());
 }
-$fragmentIds = array_values($fragmentIds);
+$idsByType = ok_core_refs_by_type($fragmentRefs);
 $comment = trim((string)($_POST['comment'] ?? ''));
 $when = trim((string)($_POST['tacto_when'] ?? ''));
 $what = trim((string)($_POST['tacto_what'] ?? ''));
@@ -65,7 +59,7 @@ try {
         if (!$found) throw new DomainException('親カテゴリが選択グループにありません');
         $parentId = (int)$found['knowledge_node_id'];
     }
-    if ($fragmentIds && !ok_core_group_has_fragments($mysqli, (string)$groupId, $sourceType, $fragmentIds)) {
+    if ($fragmentRefs && !ok_core_group_has_fragment_refs($mysqli, (string)$groupId, $fragmentRefs)) {
         throw new DomainException('選択KFがグループに共有されていません');
     }
     $sortOrder = null;
@@ -76,16 +70,19 @@ try {
         $sortOrder = (int)$stmt->get_result()->fetch_assoc()['next_sort'];
         $stmt->close();
     }
-    $legacyIds = $sourceType === 'experience' && $fragmentIds ? implode(',', $fragmentIds) : null;
+    $legacyIds = $idsByType['experience'] ? implode(',', $idsByType['experience']) : null;
+    if ($legacyIds !== null && strlen($legacyIds) > 255) throw new DomainException('接続KFが多すぎます');
     $uid = (int)$userId;
     $stmt = $mysqli->prepare('INSERT INTO knowledge_explorer (parent_node_id, node_title, knowledge_fragment_id, comment, tacto_when, tacto_what, tacto_why, organizational_basis, updated_by, deleted, sort_order, knowledge_group_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)');
     $stmt->bind_param('isssssssiii', $parentId, $title, $legacyIds, $comment, $when, $what, $why, $basis, $uid, $sortOrder, $groupId);
     $stmt->execute();
     $nodeId = (int)$mysqli->insert_id;
     $stmt->close();
-    if ($fragmentIds) {
+    if ($fragmentRefs) {
         $stmt = $mysqli->prepare('INSERT INTO knowledge_explorer_fragment_links (knowledge_node_id, fragment_source_type, fragment_source_id, display_order) VALUES (?, ?, ?, ?)');
-        foreach ($fragmentIds as $index => $fragmentId) {
+        foreach ($fragmentRefs as $index => $ref) {
+            [$sourceType, $fragmentId] = explode(':', $ref, 2);
+            $fragmentId = (int)$fragmentId;
             $displayOrder = $index + 1;
             $stmt->bind_param('isii', $nodeId, $sourceType, $fragmentId, $displayOrder);
             $stmt->execute();
@@ -93,7 +90,7 @@ try {
         $stmt->close();
     }
     $mysqli->commit();
-    node_create_reply(200, 'ok', '登録しました', ['node_id'=>$nodeId,'parent_id'=>$parentId,'node_title'=>$title,'fragment_link_count'=>count($fragmentIds)]);
+    node_create_reply(200, 'ok', '登録しました', ['node_id'=>$nodeId,'parent_id'=>$parentId,'node_title'=>$title,'fragment_link_count'=>count($fragmentRefs),'fragment_refs'=>$fragmentRefs]);
 } catch (DomainException $error) {
     $mysqli->rollback();
     node_create_reply(403, 'error', $error->getMessage());

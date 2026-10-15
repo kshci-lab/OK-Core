@@ -9,7 +9,9 @@
 
 @header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/connect_db.php';
-if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
+require_once __DIR__ . '/session_bootstrap.php';
+require_once __DIR__ . '/knowledge_group_access.php';
+hcimlab_start_session();
 
 $response = [ 'status' => 'error' ];
 try {
@@ -45,6 +47,12 @@ try {
         $idColumn = 'experience_knowledge_id';
     }
     if ($id <= 0) { throw new Exception('更新対象IDを特定できません'); }
+    $access = ok_core_resolve_active_group($mysqli, trim((string)($_POST['group_id'] ?? '')),
+        (string)($_SESSION['USERID'] ?? ''));
+    if ($access['status'] !== 200 || !ok_core_group_has_fragments($mysqli, $access['group_id'], $sourceType, [$id])) {
+        http_response_code($access['status'] === 200 ? 403 : $access['status']);
+        throw new Exception('選択KFを更新する権限がありません');
+    }
 
     $hasDiscussed = false;
     if ($res = $mysqli->query("SHOW COLUMNS FROM `$table` LIKE 'discussed'")) {

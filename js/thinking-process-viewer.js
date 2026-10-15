@@ -42,19 +42,20 @@
         if (canvas) canvas.replaceChildren();
     }
 
-    function closeMap() {
+    function cleanupMap() {
         requestSerial += 1;
         if (activeRequest) {
             activeRequest.abort();
             activeRequest = null;
         }
         destroyNetwork();
-        const panel = byId('org-tabpanel-cooperation');
-        if (panel) panel.classList.remove('is-showing-process-map');
-        if (typeof window.closeOthersThinkingProcessMap === 'function') {
-            window.closeOthersThinkingProcessMap();
-        }
         setStatus('', false);
+    }
+
+    function closeMap() {
+        cleanupMap();
+        const dialog = byId('process_others_network_container');
+        if (dialog && dialog.open) dialog.close();
     }
 
     function hideCardMenu() {
@@ -84,8 +85,6 @@
                 }
                 return;
             }
-            const cooperationTab = byId('org-tab-cooperation');
-            if (cooperationTab) cooperationTab.click();
             showThinkingProcessMap({ source_type: 'experience', source_record_id: sourceId });
         });
         cardMenu.appendChild(openButton);
@@ -277,13 +276,12 @@
         if (sourceType !== 'experience' || !/^\d+$/.test(fragmentId) || !/^\d+$/.test(groupId)) {
             return;
         }
+        const dialog = byId('process_others_network_container');
+        if (!dialog) return;
+        if (!dialog.open) dialog.showModal();
         if (activeRequest) activeRequest.abort();
         activeRequest = new AbortController();
         const currentRequest = ++requestSerial;
-        const panel = byId('org-tabpanel-cooperation');
-        const pane = byId('process_others_network_container');
-        if (panel) panel.classList.add('is-showing-process-map');
-        if (pane) pane.style.display = '';
         destroyNetwork();
         const title = byId('others_conceptdisplay');
         if (title) title.textContent = '思考過程表出化マップ';
@@ -321,10 +319,14 @@
         bindFragmentCardMenu();
         const closeButton = byId('area_close');
         if (closeButton) closeButton.addEventListener('click', closeMap);
+        const dialog = byId('process_others_network_container');
+        if (dialog) {
+            dialog.addEventListener('cancel', (event) => { event.preventDefault(); closeMap(); });
+            dialog.addEventListener('click', (event) => { if (event.target === dialog) closeMap(); });
+            dialog.addEventListener('close', () => { if (!dialog.open) cleanupMap(); });
+        }
         const select = byId('group_select');
         if (select) select.addEventListener('change', closeMap);
-        const combinationTab = byId('org-tab-combination');
-        if (combinationTab) combinationTab.addEventListener('click', closeMap);
         const zoomIn = byId('process_ZoomIn');
         const zoomOut = byId('process_ZoomOut');
         const fit = byId('process_Fit');

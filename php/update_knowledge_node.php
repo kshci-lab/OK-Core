@@ -4,6 +4,7 @@ header('Content-Type: application/json; charset=UTF-8');
 ini_set('display_errors', '0');
 require_once __DIR__ . '/session_bootstrap.php';
 require_once __DIR__ . '/knowledge_group_access.php';
+require_once __DIR__ . '/fragment_references.php';
 hcimlab_start_session();
 require_once __DIR__ . '/connect_db.php';
 
@@ -28,19 +29,15 @@ if (!ctype_digit($nodeRaw) || (int)$nodeRaw <= 0 || $title === '' ||
     node_update_reply(400, 'error', 'node_id またはタイトルが不正です');
 }
 $nodeId = (int)$nodeRaw;
-$sourceType = strtolower(trim((string)($_POST['fragment_source_type'] ?? 'experience')));
-if ($sourceType === 'externalized') $sourceType = 'discussion';
-if (!in_array($sourceType, ['experience', 'discussion'], true)) node_update_reply(400, 'error', 'fragment_source_type が不正です');
-$rawIds = $_POST['knowledge_fragment_id'] ?? '';
-$parts = is_array($rawIds) ? $rawIds : explode(',', (string)$rawIds);
-$ids = [];
-foreach ($parts as $part) {
-    $value = trim((string)$part);
-    if ($value === '') continue;
-    if (!ctype_digit($value) || (int)$value <= 0) node_update_reply(400, 'error', 'knowledge_fragment_id が不正です');
-    $ids[(int)$value] = (int)$value;
+try {
+    $fragmentRefs = ok_core_request_fragment_refs($_POST);
+} catch (InvalidArgumentException | JsonException $error) {
+    node_update_reply(400, 'error', $error->getMessage());
 }
-$ids = array_values($ids);
+$replaceAll = array_key_exists('fragment_refs', $_POST);
+$sourceType = $replaceAll ? 'mixed' : strtolower(trim((string)($_POST['fragment_source_type'] ?? 'experience')));
+if ($sourceType === 'externalized') $sourceType = 'discussion';
+$idsByType = ok_core_refs_by_type($fragmentRefs);
 $comment = trim((string)($_POST['comment'] ?? ''));
 $when = trim((string)($_POST['tacto_when'] ?? ''));
 $what = trim((string)($_POST['tacto_what'] ?? ''));
@@ -54,29 +51,34 @@ try {
     $node = $stmt->get_result()->fetch_assoc();
     $stmt->close();
     if (!$node) throw new DomainException('選択グループに組織知がありません');
-    if ($ids && !ok_core_group_has_fragments($mysqli, (string)$groupId, $sourceType, $ids)) {
+    if ($fragmentRefs && !ok_core_group_has_fragment_refs($mysqli, (string)$groupId, $fragmentRefs)) {
         throw new DomainException('選択KFがグループに共有されていません');
     }
-    $legacyCsv = $sourceType === 'experience' && $ids ? implode(',', $ids) : null;
+    $legacyCsv = $idsByType['experience'] ? implode(',', $idsByType['experience']) : null;
+    if ($legacyCsv !== null && strlen($legacyCsv) > 255) throw new DomainException('接続KFが多すぎます');
     $uid = (int)$userId;
     $stmt = $mysqli->prepare('UPDATE knowledge_explorer SET node_title = ?, comment = ?, tacto_when = ?,
         tacto_what = ?, tacto_why = ?, organizational_basis = ?, updated_by = ?,
-        knowledge_fragment_id = IF(? = "experience", ?, knowledge_fragment_id), updated_at = NOW()
+        knowledge_fragment_id = IF(? IN ("experience", "mixed"), ?, knowledge_fragment_id), updated_at = NOW()
         WHERE knowledge_node_id = ? AND knowledge_group_id = ? AND deleted = 0');
     $stmt->bind_param('ssssssissii', $title, $comment, $when, $what, $why, $basis,
         $uid, $sourceType, $legacyCsv, $nodeId, $groupId);
     $stmt->execute();
     $affected = $stmt->affected_rows;
     $stmt->close();
-    $stmt = $mysqli->prepare('DELETE FROM knowledge_explorer_fragment_links WHERE knowledge_node_id = ? AND fragment_source_type = ?');
-    $stmt->bind_param('is', $nodeId, $sourceType);
+    $stmt = $mysqli->prepare('DELETE FROM knowledge_explorer_fragment_links WHERE knowledge_node_id = ?'
+        . ($replaceAll ? '' : ' AND fragment_source_type = ?'));
+    if ($replaceAll) $stmt->bind_param('i', $nodeId);
+    else $stmt->bind_param('is', $nodeId, $sourceType);
     $stmt->execute();
     $stmt->close();
-    if ($ids) {
+    if ($fragmentRefs) {
         $stmt = $mysqli->prepare('INSERT INTO knowledge_explorer_fragment_links (knowledge_node_id, fragment_source_type, fragment_source_id, display_order) VALUES (?, ?, ?, ?)');
-        foreach ($ids as $index => $id) {
+        foreach ($fragmentRefs as $index => $ref) {
+            [$linkType, $id] = explode(':', $ref, 2);
+            $id = (int)$id;
             $order = $index + 1;
-            $stmt->bind_param('isii', $nodeId, $sourceType, $id, $order);
+            $stmt->bind_param('isii', $nodeId, $linkType, $id, $order);
             $stmt->execute();
         }
         $stmt->close();
@@ -84,7 +86,7 @@ try {
     $mysqli->commit();
     node_update_reply(200, 'ok', '更新しました', ['node_id'=>$nodeId,'node_title'=>$title,
         'tacto_when'=>$when,'tacto_what'=>$what,'tacto_why'=>$why,'organizational_basis'=>$basis,
-        'comment'=>$comment,'knowledge_fragment_id'=>$legacyCsv,'fragment_link_count'=>count($ids),
+        'comment'=>$comment,'knowledge_fragment_id'=>$legacyCsv,'fragment_link_count'=>count($fragmentRefs),'fragment_refs'=>$fragmentRefs,
         'affected_rows'=>$affected]);
 } catch (DomainException $error) {
     $mysqli->rollback();

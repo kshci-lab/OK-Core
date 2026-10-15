@@ -1815,26 +1815,9 @@ function showOrganizationalMap(){
 }
 
 function closeOthersThinkingProcessMap(){
-  
-    $('#process_others_network_container').css('display','none');
-    const processPanel = document.getElementById('org-tabpanel-cooperation');
-    if (processPanel) processPanel.classList.remove('is-showing-process-map');
-    // Remove layout overrides from the former split view so the map fills its panel again.
-    $('#organizational_container').css({ display: '', width: '', height: '', flex: '' });
-    $('#myOrganizationalnetwork_area').css({ height: '', flex: '' });
-    // スプリッターがあれば削除
-    const splitter = document.querySelector('.organizational-splitter');
-    if(splitter) splitter.remove();
-
-    // vis.js needs a redraw after container resize changes, otherwise the canvas can go blank.
-    try{
-        if(typeof defaultOrganizational !== 'undefined' && defaultOrganizational && defaultOrganizational.ownNetwork){
-            setTimeout(function(){
-                try{ defaultOrganizational.ownNetwork.redraw(); }catch(_){}
-                try{ defaultOrganizational.ownNetwork.fit({animation:false}); }catch(_){}
-            }, 0);
-        }
-    }catch(_){ }
+    if (typeof window.closeThinkingProcessViewer === 'function') {
+        window.closeThinkingProcessViewer();
+    }
 }
 
 // ロードした際の関数
