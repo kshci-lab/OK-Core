@@ -1284,7 +1284,6 @@
     if(!list) return;
     var rect = list.getBoundingClientRect();
     var wrappers = qsa('.fragment-node-wrapper', list);
-    var maxBottom = 0;
     wrappers.forEach(function(w, idx){
       var pos = null;
       if(!forceReset && hasStoredCanvasPosition(w)){
@@ -1301,10 +1300,9 @@
       w.style.left = pos.left + 'px';
       w.style.top = pos.top + 'px';
       w.style.width = '';
-      var h = w.offsetHeight || 128;
-      maxBottom = Math.max(maxBottom, pos.top + h + 24);
     });
-    list.style.minHeight = Math.max(260, maxBottom) + 'px';
+    // Keep the viewport within the workspace; absolute cards provide scroll extents.
+    list.style.minHeight = '';
     if(forceReset) saveFragmentCanvasPositions(workspace);
   }
 

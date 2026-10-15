@@ -51,7 +51,7 @@ function ok_core_group_has_fragments(mysqli $mysqli, string $groupId, string $so
     $in = implode(',', $ids);
     if ($sourceType === 'experience') {
         $sql = "SELECT DISTINCT ek.experience_knowledge_id AS id FROM shared_nodes sn
-                INNER JOIN experience_knowledges ek ON ek.experience_knowledge_id = sn.experience_knowledge_id
+                INNER JOIN experience_knowledges ek ON ek.experience_knowledge_id = sn.knowledge_fragment_id
                 WHERE sn.knowledge_group_id = $group AND sn.deleted = 0 AND ek.deleted = 0
                   AND ek.experience_knowledge_id IN ($in)";
     } else {

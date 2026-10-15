@@ -226,7 +226,7 @@ $allowedDiscussionIds = [];
 $groupIdForRefs = (int)$selectedGroupId;
 if ($res = $mysqli->query("SELECT DISTINCT ek.experience_knowledge_id
                              FROM shared_nodes sn
-                             INNER JOIN experience_knowledges ek ON ek.experience_knowledge_id = sn.experience_knowledge_id
+                             INNER JOIN experience_knowledges ek ON ek.experience_knowledge_id = sn.knowledge_fragment_id
                             WHERE sn.knowledge_group_id = $groupIdForRefs AND sn.deleted = 0 AND ek.deleted = 0")) {
     while ($row = $res->fetch_assoc()) { $allowedExperienceIds[(int)$row['experience_knowledge_id']] = true; }
     $res->free();

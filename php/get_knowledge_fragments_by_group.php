@@ -119,7 +119,7 @@ if ($resT = $mysqli->query("SHOW TABLES LIKE 'experience_knowledges'")) {
                      ek.discussed,
                      'experience' AS source_type
                 FROM shared_nodes sn
-                INNER JOIN experience_knowledges ek ON sn.experience_knowledge_id = ek.experience_knowledge_id
+                INNER JOIN experience_knowledges ek ON sn.knowledge_fragment_id = ek.experience_knowledge_id
                 LEFT JOIN users u ON u.user_id = ek.user_id
                WHERE sn.deleted = 0
                  AND sn.knowledge_group_id = ?

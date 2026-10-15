@@ -123,7 +123,7 @@ if (!empty($user_ids_in_latest_group)) {
     $sql_nodes = "SELECT sn.id AS shared_node_id, sn.knowledge_group_id, ec.experience_knowledge_id, ec.experience_type, ec.thought_experience_node_id, ec.user_id, ec.selected_contents, ec.knowledge_fragment_content, ec.stage1, ec.stage2, ec.stage3
         FROM shared_nodes sn
         INNER JOIN experience_knowledges ec
-          ON ec.experience_knowledge_id = sn.experience_knowledge_id
+          ON ec.experience_knowledge_id = sn.knowledge_fragment_id
         WHERE sn.knowledge_group_id = $selected_group_id_sql
             AND sn.deleted = 0
             AND ec.deleted = 0

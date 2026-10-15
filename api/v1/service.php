@@ -248,11 +248,11 @@ function ok_core_api_sync(mysqli $db, string $method, string $system, string $ex
             $stmt->bind_param('ssssii', $summary, $stages['stage1'], $stages['stage2'], $stages['stage3'], $userId, $localId);
             $stmt->execute();
             $stmt->close();
-            $stmt = $db->prepare('UPDATE shared_nodes SET deleted = 1 WHERE experience_knowledge_id = ?');
+            $stmt = $db->prepare('UPDATE shared_nodes SET deleted = 1 WHERE knowledge_fragment_id = ?');
             $stmt->bind_param('i', $localId);
             $stmt->execute();
             $stmt->close();
-            $stmt = $db->prepare('INSERT INTO shared_nodes (experience_knowledge_id, knowledge_group_id, deleted)
+            $stmt = $db->prepare('INSERT INTO shared_nodes (knowledge_fragment_id, knowledge_group_id, deleted)
                 VALUES (?, ?, 0) ON DUPLICATE KEY UPDATE deleted = 0');
             foreach ($groups as $groupId) {
                 $stmt->bind_param('ii', $localId, $groupId);
@@ -264,7 +264,7 @@ function ok_core_api_sync(mysqli $db, string $method, string $system, string $ex
             $stmt->bind_param('i', $localId);
             $stmt->execute();
             $stmt->close();
-            $stmt = $db->prepare('UPDATE shared_nodes SET deleted = 1 WHERE experience_knowledge_id = ?');
+            $stmt = $db->prepare('UPDATE shared_nodes SET deleted = 1 WHERE knowledge_fragment_id = ?');
             $stmt->bind_param('i', $localId);
             $stmt->execute();
             $stmt->close();

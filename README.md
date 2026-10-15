@@ -1,4 +1,4 @@
-﻿# OK-Core
+# OK-Core
 
 OK-Core is the organizational knowledge application separated from Forest-Core.
 
@@ -71,28 +71,30 @@ After the schema is created, migrate or import:
 
 Forest-Core should eventually write produced KFs to OK-Core through a small import API instead of sharing one database.
 
-If `ok_core.shared_nodes` was already created before the unique key was added to the schema, run this once in phpMyAdmin:
+Apply `sql/2026-10-15_rename_shared_nodes_knowledge_fragment_id.sql` when upgrading an existing shared table. See [the migration notes](docs/shared-nodes-column-rename.md) for the matching Forest-platform change and the scope of this rename.
+
+If `ok_core.shared_nodes` was already created before the unique key was added to the schema, run this once in phpMyAdmin after the column rename:
 
 ```sql
-SELECT experience_knowledge_id, knowledge_group_id, COUNT(*) AS duplicate_count
+SELECT knowledge_fragment_id, knowledge_group_id, COUNT(*) AS duplicate_count
 FROM ok_core.shared_nodes
-WHERE experience_knowledge_id IS NOT NULL
-GROUP BY experience_knowledge_id, knowledge_group_id
+WHERE knowledge_fragment_id IS NOT NULL
+GROUP BY knowledge_fragment_id, knowledge_group_id
 HAVING COUNT(*) > 1;
 
 DELETE sn
 FROM ok_core.shared_nodes sn
 JOIN ok_core.shared_nodes keep
-  ON keep.experience_knowledge_id = sn.experience_knowledge_id
+  ON keep.knowledge_fragment_id = sn.knowledge_fragment_id
  AND keep.knowledge_group_id = sn.knowledge_group_id
  AND keep.id < sn.id
-WHERE sn.experience_knowledge_id IS NOT NULL;
+WHERE sn.knowledge_fragment_id IS NOT NULL;
 
 ALTER TABLE ok_core.shared_nodes
-  ADD UNIQUE KEY ux_shared_nodes_experience_group (experience_knowledge_id, knowledge_group_id);
+  ADD UNIQUE KEY ux_shared_nodes_experience_group (knowledge_fragment_id, knowledge_group_id);
 ```
 
-The `DELETE` keeps the lowest `id` for each duplicate `(experience_knowledge_id, knowledge_group_id)` pair and removes the later duplicates.
+The `DELETE` keeps the lowest `id` for each duplicate `(knowledge_fragment_id, knowledge_group_id)` pair and removes the later duplicates.
 
 ## SSO redirect URIs
 
