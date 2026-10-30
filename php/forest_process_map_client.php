@@ -30,6 +30,8 @@ function forest_process_map_config(): array
             $config[$key] = $value;
         }
     }
+    // Match the KF sender: application-owned configuration wins over stale SetEnv values.
+    if (isset($local) && is_array($local)) $config = array_replace($config, $local);
     $config['base_url'] = rtrim((string)$config['base_url'], '/');
     $config['token'] = (string)$config['token'];
     $config['timeout_seconds'] = max(1, (int)$config['timeout_seconds']);
@@ -39,80 +41,13 @@ function forest_process_map_config(): array
 function forest_process_map_fetch(int $externalKfId, string $actingSub, int $groupId,
     string $sourceReference = '', string $sourceType = ''): array
 {
-    if ($externalKfId <= 0 || $groupId <= 0 || $actingSub === '' || strlen($actingSub) > 191
-        || strpbrk($actingSub, "\r\n") !== false) {
-        throw new ForestProcessMapException('参照するKFまたはユーザーが正しくありません。', 400, 'INVALID_REFERENCE');
+    require_once __DIR__ . '/source_context_client.php';
+    try {
+        $context = source_context_fetch('forest-platform', (string)$externalKfId, $actingSub, $groupId,
+            'forest.thinking-process-map.v1', '', $sourceReference, $sourceType);
+        return $context['map'];
+    } catch (SourceContextException $error) {
+        $code = $error->errorCode === 'SOURCE_NOT_CONFIGURED' ? 'FOREST_NOT_CONFIGURED' : $error->errorCode;
+        throw new ForestProcessMapException($error->getMessage(), $error->httpStatus, $code);
     }
-    if (strlen($sourceReference) > 191 || strlen($sourceType) > 64
-        || strpbrk($sourceReference . $sourceType, "\r\n") !== false) {
-        throw new ForestProcessMapException('元ノードの参照が正しくありません。', 400, 'INVALID_REFERENCE');
-    }
-    $config = forest_process_map_config();
-    if ($config['base_url'] === '' || $config['token'] === '') {
-        throw new ForestProcessMapException('Forest参照APIのURLまたはトークンが設定されていません。', 503, 'FOREST_NOT_CONFIGURED');
-    }
-    if (!preg_match('#^https?://[^/]+/#', $config['base_url'] . '/')) {
-        throw new ForestProcessMapException('Forest参照APIのURLが正しくありません。', 503, 'FOREST_INVALID_URL');
-    }
-    if (!function_exists('curl_init')) {
-        throw new ForestProcessMapException('PHPのcURL拡張が必要です。', 503, 'HTTP_CLIENT_UNAVAILABLE');
-    }
-    require_once dirname(__DIR__) . '/api/v1/service.php';
-    $signingToken = (string)(ok_core_api_config()['token'] ?? '');
-    if ($signingToken === '') {
-        throw new ForestProcessMapException('OK-CoreのAPIトークンが設定されていません。', 503, 'OK_CORE_PROOF_NOT_CONFIGURED');
-    }
-    $proofTime = (string)time();
-    $proofPayload = "GET\n{$externalKfId}\n{$groupId}\n{$actingSub}\n{$proofTime}";
-    if ($sourceReference !== '') $proofPayload .= "\n{$sourceReference}\n{$sourceType}";
-    $proof = hash_hmac('sha256', $proofPayload, $signingToken);
-
-    $url = $config['base_url'] . '/knowledge-fragments/' . $externalKfId . '/thinking-process-map';
-    $requestId = 'ok-core-process-' . bin2hex(random_bytes(8));
-    $handle = curl_init($url);
-    if ($handle === false) {
-        throw new ForestProcessMapException('Forest参照APIへの接続を開始できません。');
-    }
-    $options = [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => false,
-        CURLOPT_TIMEOUT => $config['timeout_seconds'],
-        CURLOPT_CONNECTTIMEOUT => min(5, $config['timeout_seconds']),
-        CURLOPT_HTTPHEADER => [
-            'Accept: application/json',
-            'Authorization: Bearer ' . $config['token'],
-            'X-Acting-User-Sub: ' . $actingSub,
-            'X-Knowledge-Group-Id: ' . $groupId,
-            'X-OK-Core-Proof-Time: ' . $proofTime,
-            'X-OK-Core-Proof: ' . $proof,
-            'X-KF-Source-Reference: ' . $sourceReference,
-            'X-KF-Source-Type: ' . $sourceType,
-            'X-Request-Id: ' . $requestId,
-        ],
-    ];
-    $caPath = dirname(__DIR__) . '/certs/cacert.pem';
-    if (str_starts_with($url, 'https://') && is_file($caPath)) {
-        $options[CURLOPT_CAINFO] = $caPath;
-    }
-    curl_setopt_array($handle, $options);
-    $body = curl_exec($handle);
-    $status = (int)curl_getinfo($handle, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($handle);
-    curl_close($handle);
-    if ($body === false) {
-        throw new ForestProcessMapException('Forest参照APIへ接続できません: ' . $curlError);
-    }
-    $decoded = json_decode((string)$body, true);
-    if (!is_array($decoded)) {
-        throw new ForestProcessMapException('Forest参照APIからJSONを取得できません。', 502, 'FOREST_INVALID_RESPONSE');
-    }
-    if ($status < 200 || $status >= 300) {
-        $code = (string)($decoded['error']['code'] ?? 'FOREST_API_ERROR');
-        $message = (string)($decoded['error']['message'] ?? 'Forest参照APIでエラーが発生しました。');
-        throw new ForestProcessMapException($message, in_array($status, [403, 404], true) ? $status : 502, $code);
-    }
-    if (!isset($decoded['data']) || !is_array($decoded['data'])) {
-        throw new ForestProcessMapException('Forest参照APIのデータ形式が正しくありません。', 502, 'FOREST_INVALID_RESPONSE');
-    }
-    return $decoded['data'];
 }

@@ -1,2 +1,3 @@
 RewriteEngine On
+RewriteRule ^(?:openapi\.yaml|schemas/kf-put\.schema\.json|examples/kf-put\.json)$ - [L]
 RewriteRule ^(.*)$ index.php [QSA,L]

@@ -1,17 +1,7 @@
 <?php
 declare(strict_types=1);
 
-final class OkCoreApiFailure extends RuntimeException
-{
-    public int $httpStatus;
-    public string $apiCode;
-    public function __construct(int $status, string $code, string $message)
-    {
-        parent::__construct($message);
-        $this->httpStatus = $status;
-        $this->apiCode = $code;
-    }
-}
+require_once __DIR__ . '/contract.php';
 
 function ok_core_api_config(): array
 {
@@ -44,27 +34,25 @@ function ok_core_api_reply(int $status, array $body): void
     header('Content-Type: application/json; charset=UTF-8');
     header('Cache-Control: no-store');
     $requestId = ok_core_api_header('X-Request-Id');
-    if ($requestId !== '') {
-        $requestId = substr(preg_replace('/[^A-Za-z0-9._-]/', '', $requestId), 0, 80);
-        header('X-Request-Id: ' . $requestId);
-        $body['meta'] = ['request_id' => $requestId];
-    }
+    if (!preg_match('/^[A-Za-z0-9._:-]{1,80}$/D', $requestId)) $requestId = 'ok-core-' . bin2hex(random_bytes(12));
+    header('X-Request-Id: ' . $requestId);
+    $body['meta'] = ['request_id' => $requestId];
+    if ($status === 401) header('WWW-Authenticate: Bearer');
+    if (ob_get_level() > 0) ob_clean();
     echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
 
-function ok_core_api_require(bool $condition, int $status, string $code, string $message): void
+function ok_core_api_acting_sub(): string
 {
-    if (!$condition) throw new OkCoreApiFailure($status, $code, $message);
+    $sub = ok_core_api_header('X-Acting-User-Sub');
+    ok_core_api_require(ok_core_api_text($sub, 1, 191) && !preg_match('/[\x00-\x1f\x7f]/', $sub),
+        401, 'ACTING_USER_REQUIRED', 'Acting user is required.');
+    return $sub;
 }
 
 function ok_core_api_actor(mysqli $db, array $config): array
 {
-    $token = (string)$config['token'];
-    $auth = ok_core_api_header('Authorization');
-    ok_core_api_require($token !== '' && str_starts_with($auth, 'Bearer ') &&
-        hash_equals($token, substr($auth, 7)), 401, 'INVALID_TOKEN', 'API token is missing or invalid.');
-    $sub = ok_core_api_header('X-Acting-User-Sub');
-    ok_core_api_require($sub !== '', 401, 'ACTING_USER_REQUIRED', 'Acting user is required.');
+    $sub = ok_core_api_acting_sub();
     $stmt = $db->prepare('SELECT user_id, sso_sub FROM users WHERE sso_sub = ? AND is_active = 1 LIMIT 1');
     $stmt->bind_param('s', $sub);
     $stmt->execute();
@@ -106,39 +94,17 @@ function ok_core_api_valid_groups(array $raw, array $allowed): array
 
 function ok_core_api_json_body(): array
 {
+    $contentType = (string)($_SERVER['CONTENT_TYPE'] ?? '');
+    ok_core_api_require($contentType === '' || strtolower(trim(explode(';', $contentType)[0])) === 'application/json',
+        415, 'UNSUPPORTED_MEDIA_TYPE', 'Use application/json.');
     $raw = file_get_contents('php://input');
-    ok_core_api_require(is_string($raw) && strlen($raw) <= 1048576, 413, 'PAYLOAD_TOO_LARGE', 'Payload exceeds 1 MB.');
-    $body = json_decode($raw, true);
-    ok_core_api_require(is_array($body), 400, 'INVALID_JSON', 'Expected a JSON object.');
-    return $body;
-}
-
-function ok_core_api_is_iso_time(string $value): bool
-{
-    if (!preg_match('/(?:Z|[+-][0-9]{2}:[0-9]{2})$/', $value)) return false;
-    try { new DateTimeImmutable($value); return true; }
-    catch (Throwable $error) { return false; }
-}
-
-function ok_core_api_stages(array $body): array
-{
-    $stages = ['stage1' => '', 'stage2' => '', 'stage3' => ''];
-    ok_core_api_require(isset($body['stages']) && is_array($body['stages']), 400, 'INVALID_STAGES', 'Stages are required.');
-    foreach ($body['stages'] as $stage) {
-        ok_core_api_require(is_array($stage), 400, 'INVALID_STAGES', 'Invalid stage.');
-        $code = (string)($stage['stage_code'] ?? '');
-        ok_core_api_require(array_key_exists($code, $stages), 400, 'INVALID_STAGES', 'Unknown stage code.');
-        $content = (string)($stage['rendered_content'] ?? '');
-        ok_core_api_require((function_exists('mb_strlen') ? mb_strlen($content, 'UTF-8') : preg_match_all('/./us', $content)) <= 255, 422, 'STAGE_TOO_LONG', 'Stage exceeds 255 characters.');
-        $stages[$code] = $content;
-    }
-    return $stages;
+    return ok_core_api_decode_fragment(is_string($raw) ? $raw : '');
 }
 
 function ok_core_api_sync(mysqli $db, string $method, string $system, string $externalId, array $actor, array $config): array
 {
     ok_core_api_require($system === (string)$config['system_code'], 403, 'SOURCE_SYSTEM_FORBIDDEN', 'Source system is not allowed.');
-    ok_core_api_require(ctype_digit($externalId) && (int)$externalId > 0, 400, 'INVALID_EXTERNAL_ID', 'External KF ID must be positive.');
+    ok_core_api_require(ok_core_api_external_id($externalId), 400, 'INVALID_EXTERNAL_ID', 'External KF ID must be a valid string of 1 to 191 characters.');
     $revision = 0;
     $deletedAt = null;
     $body = null;
@@ -147,32 +113,13 @@ function ok_core_api_sync(mysqli $db, string $method, string $system, string $ex
     $groups = [];
     if ($method === 'PUT') {
         $body = ok_core_api_json_body();
-        ok_core_api_require(($body['protocol']['code'] ?? '') === 'OK_CORE_KF' &&
-            ($body['protocol']['version'] ?? '') === '1.0', 422, 'UNSUPPORTED_PROTOCOL', 'Unsupported KF protocol.');
-        ok_core_api_require(ok_core_api_is_iso_time((string)($body['source_updated_at'] ?? '')),
-            400, 'INVALID_UPDATED_AT', 'source_updated_at must include a timezone.');
-        ok_core_api_require(is_array($body['activity'] ?? null) &&
-            trim((string)($body['activity']['type_code'] ?? '')) !== '' &&
-            trim((string)($body['activity']['external_activity_id'] ?? '')) !== '',
-            400, 'INVALID_ACTIVITY', 'Activity reference is required.');
-        ok_core_api_require(is_array($body['context_package'] ?? null) &&
-            trim((string)($body['context_package']['external_context_package_id'] ?? '')) !== '' &&
-            is_array($body['context_package']['items'] ?? null),
-            400, 'INVALID_CONTEXT', 'Context package is required.');
-        ok_core_api_require((string)($body['expresser_sso_sub'] ?? '') === (string)$actor['sso_sub'],
-            403, 'EXPRESSER_MISMATCH', 'Expresser differs from acting user.');
-        $revisionRaw = (string)($body['source_revision'] ?? '');
-        $revision = ctype_digit($revisionRaw) ? (int)$revisionRaw : 0;
-        $summary = trim((string)($body['summary'] ?? ''));
-        ok_core_api_require($summary !== '' && (function_exists('mb_strlen') ? mb_strlen($summary, 'UTF-8') : preg_match_all('/./us', $summary)) <= 255,
-            422, 'INVALID_SUMMARY', 'Summary must contain 1 to 255 characters.');
-        ok_core_api_require(isset($body['share_group_ids']) && is_array($body['share_group_ids']),
-            400, 'INVALID_GROUPS', 'share_group_ids must be an array.');
+        $stages = ok_core_api_validate_fragment($body, (string)$actor['sso_sub']);
+        $revision = (int)$body['source_revision'];
+        $summary = trim($body['summary']);
         $groups = ok_core_api_valid_groups($body['share_group_ids'], ok_core_api_groups($db, (int)$actor['user_id']));
-        $stages = ok_core_api_stages($body);
     } else {
         $revisionRaw = ok_core_api_header('X-Source-Revision');
-        $revision = ctype_digit($revisionRaw) ? (int)$revisionRaw : 0;
+        $revision = ok_core_api_positive_integer($revisionRaw) ? (int)$revisionRaw : 0;
         $rawDeletedAt = ok_core_api_header('X-Source-Deleted-At');
         ok_core_api_require(ok_core_api_is_iso_time($rawDeletedAt),
             400, 'INVALID_DELETED_AT', 'Source deletion time is required.');
@@ -187,18 +134,22 @@ function ok_core_api_sync(mysqli $db, string $method, string $system, string $ex
         $stmt->bind_param('ss', $system, $externalId);
         $stmt->execute();
         $stmt->close();
-        $stmt = $db->prepare('SELECT experience_knowledge_id, source_revision, source_deleted_at, snapshot_json
+        $stmt = $db->prepare('SELECT external_kf_id, experience_knowledge_id, source_revision, source_deleted_at, snapshot_json
             FROM kf_source_mappings WHERE source_system = ? AND external_kf_id = ? FOR UPDATE');
         $stmt->bind_param('ss', $system, $externalId);
         $stmt->execute();
         $mapping = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         if (!$mapping) throw new RuntimeException('Could not lock source mapping.');
+        // Existing installations may use a case/accent-insensitive DB collation.
+        // Never silently update a different producer ID matched by that collation.
+        ok_core_api_require((string)$mapping['external_kf_id'] === $externalId,
+            409, 'EXTERNAL_ID_COLLISION', 'External ID conflicts with an existing ID under the current database collation.');
         $currentRevision = (int)$mapping['source_revision'];
         ok_core_api_require($revision >= $currentRevision, 409, 'STALE_REVISION', 'A newer revision was already accepted.');
         if ($revision === $currentRevision) {
             ok_core_api_require($method === 'DELETE' ? $mapping['source_deleted_at'] === $deletedAt :
-                $mapping['source_deleted_at'] === null && $mapping['snapshot_json'] === $snapshot,
+                $mapping['source_deleted_at'] === null && ok_core_api_same_snapshot($mapping['snapshot_json'], $snapshot),
                 409, 'REVISION_CONFLICT', 'The same revision has different content.');
             $db->commit();
             return ['knowledge_fragment_id' => (string)($mapping['experience_knowledge_id'] ?? ''),
@@ -216,15 +167,19 @@ function ok_core_api_sync(mysqli $db, string $method, string $system, string $ex
         }
         if ($method === 'PUT') {
             if ($localId === 0) {
-                $candidate = (int)$externalId;
-                $stmt = $db->prepare('SELECT ek.user_id, ek.knowledge_fragment_content, km.id AS mapped_id
-                    FROM experience_knowledges ek LEFT JOIN kf_source_mappings km
-                      ON km.experience_knowledge_id = ek.experience_knowledge_id
-                    WHERE ek.experience_knowledge_id = ? FOR UPDATE');
-                $stmt->bind_param('i', $candidate);
-                $stmt->execute();
-                $existing = $stmt->get_result()->fetch_assoc();
-                $stmt->close();
+                $existing = null;
+                // Numeric-ID adoption exists only for explicitly enabled legacy imports.
+                if (($config['legacy_adopt_numeric_ids'] ?? false) && ok_core_api_positive_integer($externalId, '2147483647')) {
+                    $candidate = (int)$externalId;
+                    $stmt = $db->prepare('SELECT ek.user_id, ek.knowledge_fragment_content, km.id AS mapped_id
+                        FROM experience_knowledges ek LEFT JOIN kf_source_mappings km
+                          ON km.experience_knowledge_id = ek.experience_knowledge_id
+                        WHERE ek.experience_knowledge_id = ? FOR UPDATE');
+                    $stmt->bind_param('i', $candidate);
+                    $stmt->execute();
+                    $existing = $stmt->get_result()->fetch_assoc();
+                    $stmt->close();
+                }
                 if ($existing && $existing['mapped_id'] === null &&
                     (int)$existing['user_id'] === (int)$actor['user_id'] &&
                     trim((string)$existing['knowledge_fragment_content']) === $summary) {
@@ -248,10 +203,12 @@ function ok_core_api_sync(mysqli $db, string $method, string $system, string $ex
             $stmt->bind_param('ssssii', $summary, $stages['stage1'], $stages['stage2'], $stages['stage3'], $userId, $localId);
             $stmt->execute();
             $stmt->close();
-            $stmt = $db->prepare('UPDATE shared_nodes SET deleted = 1 WHERE fragment_source_type = \'experience\' AND knowledge_fragment_id = ?');
-            $stmt->bind_param('i', $localId);
-            $stmt->execute();
-            $stmt->close();
+            if (($config['share_policy'] ?? 'replace') === 'replace') {
+                $stmt = $db->prepare('UPDATE shared_nodes SET deleted = 1 WHERE fragment_source_type = \'experience\' AND knowledge_fragment_id = ?');
+                $stmt->bind_param('i', $localId);
+                $stmt->execute();
+                $stmt->close();
+            }
             $stmt = $db->prepare('INSERT INTO shared_nodes (fragment_source_type, knowledge_fragment_id, knowledge_group_id, deleted)
                 VALUES (\'experience\', ?, ?, 0) ON DUPLICATE KEY UPDATE deleted = 0');
             foreach ($groups as $groupId) {
@@ -286,51 +243,75 @@ function ok_core_api_sync(mysqli $db, string $method, string $system, string $ex
     }
 }
 
+function ok_core_api_method(string $method, array $allowed): void
+{
+    if (!in_array($method, $allowed, true)) {
+        header('Allow: ' . implode(', ', $allowed));
+        throw new OkCoreApiFailure(405, 'METHOD_NOT_ALLOWED', 'Method is not allowed for this resource.');
+    }
+}
+
 function ok_core_api_dispatch(): void
 {
+    // Suppress incidental DB/bootstrap output; every API response is JSON.
+    ob_start();
     $requestUri = (string)($_SERVER['REQUEST_URI'] ?? '');
     $path = (string)(parse_url($requestUri, PHP_URL_PATH) ?: '');
     $prefix = '/api/v1';
     $offset = strpos($path, $prefix);
     $route = $offset === false ? (string)($_SERVER['PATH_INFO'] ?? '') : substr($path, $offset + strlen($prefix));
+    $route = preg_replace('#^/index\.php(?=/|$)#', '', $route);
     $route = rtrim($route, '/');
     $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
     try {
-        if ($method === 'GET' && $route === '/health') {
+        if ($route === '/capabilities') {
+            ok_core_api_method($method, ['GET']);
+            ok_core_api_reply(200, ['data' => ok_core_api_capability_data()]);
+            return;
+        }
+        if ($route === '/health') {
+            ok_core_api_method($method, ['GET']);
             require __DIR__ . '/../../php/connect_db.php';
             ok_core_api_require(isset($mysqli) && $mysqli instanceof mysqli && $mysqli->ping(),
                 503, 'DATABASE_UNAVAILABLE', 'Database unavailable.');
             ok_core_api_reply(200, ['data' => ['status' => 'ok']]);
             return;
         }
-        if ($method === 'GET' && $route === '/capabilities') {
-            ok_core_api_reply(200, ['data' => ['supported_protocols' => [
-                ['protocol_code' => 'OK_CORE_KF', 'protocol_version' => '1.0']],
-                'max_payload_bytes' => 1048576]]);
-            return;
+        $requestedSystem = null;
+        $externalId = null;
+        if ($route === '/users/me/knowledge-groups') {
+            ok_core_api_method($method, ['GET']);
+            $scope = 'groups:read';
+        } elseif (preg_match('#^/source-systems/([^/]+)/knowledge-fragments/([^/]+)$#', $route, $match)) {
+            ok_core_api_method($method, ['PUT', 'DELETE']);
+            $requestedSystem = rawurldecode($match[1]);
+            $externalId = rawurldecode($match[2]);
+            $scope = $method === 'PUT' ? 'fragments:write' : 'fragments:delete';
+        } else {
+            throw new OkCoreApiFailure(404, 'NOT_FOUND', 'API route not found.');
         }
         $config = ok_core_api_config();
+        $source = ok_core_api_authenticate($config, ok_core_api_header('Authorization'), $requestedSystem);
+        ok_core_api_scope($source, $scope);
+        ok_core_api_acting_sub();
         require __DIR__ . '/../../php/connect_db.php';
         ok_core_api_require(isset($mysqli) && $mysqli instanceof mysqli, 503, 'DATABASE_UNAVAILABLE', 'Database unavailable.');
         $mysqli->set_charset('utf8mb4');
-        $actor = ok_core_api_actor($mysqli, $config);
-        if ($method === 'GET' && $route === '/users/me/knowledge-groups') {
+        $actor = ok_core_api_actor($mysqli, $source);
+        if ($externalId === null) {
             ok_core_api_reply(200, ['data' => ok_core_api_groups($mysqli, (int)$actor['user_id'])]);
             return;
         }
-        if (preg_match('#^/source-systems/([^/]+)/knowledge-fragments/([^/]+)$#', $route, $match) &&
-            in_array($method, ['PUT', 'DELETE'], true)) {
-            $data = ok_core_api_sync($mysqli, $method, rawurldecode($match[1]),
-                rawurldecode($match[2]), $actor, $config);
-            ok_core_api_reply(200, ['data' => $data]);
-            return;
-        }
-        throw new OkCoreApiFailure(404, 'NOT_FOUND', 'API route not found.');
+        $data = ok_core_api_sync($mysqli, $method, $requestedSystem, $externalId, $actor, $source);
+        ok_core_api_reply(200, ['data' => $data]);
     } catch (OkCoreApiFailure $error) {
-        ok_core_api_reply($error->httpStatus, ['error' => ['code' => $error->apiCode,
-            'message' => $error->getMessage()]]);
+        $body = ['error' => ['code' => $error->apiCode, 'message' => $error->getMessage()]];
+        if ($error->details !== []) $body['error']['details'] = $error->details;
+        ok_core_api_reply($error->httpStatus, $body);
     } catch (Throwable $error) {
-        error_log('OK-Core API failure: ' . $error->getMessage());
+        error_log('OK-Core API failure: ' . get_class($error));
         ok_core_api_reply(500, ['error' => ['code' => 'INTERNAL_ERROR', 'message' => 'Internal API error.']]);
+    } finally {
+        ob_end_flush();
     }
 }

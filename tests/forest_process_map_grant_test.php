@@ -22,7 +22,7 @@ grant_check($legacy['source_reference'] === $reference, 'Legacy lookup must use 
 grant_check($legacy['process_nodes'] === $map['process_nodes'] && $legacy['node_versions'] === $map['node_versions'], 'Legacy node lookup must return the same map.');
 
 $config = forest_process_map_config();
-$key = (string)ok_core_api_config()['token'];
+$key = (string)ok_core_api_sources(ok_core_api_config())['forest-platform']['token'];
 $stamp = (string)time();
 $proof = hash_hmac('sha256', "GET\n$id\n$group\n$actor\n$stamp\n$reference\n$type", $key);
 foreach (['unsigned', 'tampered_reference', 'tampered_type', 'expired'] as $case) {

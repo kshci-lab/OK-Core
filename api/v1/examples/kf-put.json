@@ -1,0 +1,52 @@
+{
+  "protocol": {
+    "code": "OK_CORE_KF",
+    "version": "1.0"
+  },
+  "source_revision": 1,
+  "source_updated_at": "2026-10-30T10:00:00+09:00",
+  "expresser_sso_sub": "example-sso-sub",
+  "summary": "Reflect on the purpose before selecting a concrete example.",
+  "activity": {
+    "type_code": "thinking_process_map",
+    "external_activity_id": "map-42"
+  },
+  "context_package": {
+    "external_context_package_id": "9",
+    "items": [
+      {
+        "entity_type_code": "process_node",
+        "entity_id": "node-7",
+        "display_order": 0,
+        "snapshot": {
+          "content": "Reconsider the purpose"
+        }
+      }
+    ]
+  },
+  "stages": [
+    {
+      "stage_code": "stage1",
+      "rendered_content": "Review the context",
+      "slots": [
+        {
+          "slot_code": "situation",
+          "value": "Preparing a research presentation"
+        }
+      ]
+    },
+    {
+      "stage_code": "stage2",
+      "rendered_content": "Compare alternatives",
+      "slots": []
+    },
+    {
+      "stage_code": "stage3",
+      "rendered_content": "State the resulting insight",
+      "slots": []
+    }
+  ],
+  "share_group_ids": [
+    "1"
+  ]
+}

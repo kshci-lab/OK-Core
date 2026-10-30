@@ -1,0 +1,1678 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OK-Core KF API",
+    "version": "1.2.0",
+    "description": "Phase 2. KF receipt stays API v1 / OK_CORE_KF 1.0 with legacy storage. Producer-owned context operations declare operation-level servers. No DB schema migration."
+  },
+  "servers": [
+    {
+      "url": "/OK-Core/api/v1",
+      "description": "Local example. Replace the deployment base URL when importing."
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "summary": "DB connectivity; not schema readiness",
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "pattern": "^[A-Za-z0-9._:-]{1,80}$"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Connected",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "const": "ok"
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Configuration or database unavailable",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/capabilities": {
+      "get": {
+        "operationId": "capabilities",
+        "summary": "Public capabilities without secrets or source registry",
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "pattern": "^[A-Za-z0-9._:-]{1,80}$"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Limits and supported features",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "supported_protocols": {
+                          "type": "array"
+                        },
+                        "max_payload_bytes": {
+                          "type": "integer"
+                        },
+                        "authentication": {
+                          "type": "object"
+                        },
+                        "idempotency": {
+                          "type": "object"
+                        },
+                        "sharing": {
+                          "type": "object"
+                        },
+                        "storage": {
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "supported_protocols",
+                        "max_payload_bytes",
+                        "authentication",
+                        "idempotency",
+                        "sharing",
+                        "storage"
+                      ]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me/knowledge-groups": {
+      "get": {
+        "operationId": "getKnowledgeGroups",
+        "summary": "Active groups of the acting user",
+        "description": "Scope groups:read. Group IDs belong to OK-Core.",
+        "security": [
+          {
+            "SourceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Acting-User-Sub",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 191,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+            },
+            "required": true,
+            "description": "SSO sub of an active OK-Core user; asserted by the trusted producer backend."
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "pattern": "^[A-Za-z0-9._:-]{1,80}$"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Groups",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "group_id": {
+                            "type": "string",
+                            "minLength": 0
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 0
+                          },
+                          "role": {
+                            "type": "string",
+                            "minLength": 0
+                          }
+                        },
+                        "required": [
+                          "group_id",
+                          "name",
+                          "role"
+                        ]
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid token or actor header",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong system, scope, inactive user, owner or group",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Configuration or database unavailable",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/source-systems/{system_code}/knowledge-fragments/{external_kf_id}": {
+      "parameters": [
+        {
+          "name": "system_code",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
+          },
+          "required": true
+        },
+        {
+          "name": "external_kf_id",
+          "in": "path",
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 191,
+            "pattern": "^[^\\u0000-\\u0020\\u007f/\\\\]+$"
+          },
+          "required": true,
+          "description": "URL-encode once. Case/accent-only aliases may conflict with the legacy DB collation."
+        }
+      ],
+      "put": {
+        "operationId": "putKnowledgeFragment",
+        "summary": "Register/update a source-owned KF snapshot",
+        "description": "Scope fragments:write. Atomic legacy experience adapter for all producers in phase 1. Server-configured share_policy: merge retains other shares; replace revokes unlisted shares. Identical revision retries succeed; object key order ignored, array order/scalar types significant. No Idempotency-Key header is required. Specialized discussion UI migration is phase 4.",
+        "security": [
+          {
+            "SourceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Acting-User-Sub",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 191,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+            },
+            "required": true,
+            "description": "SSO sub of an active OK-Core user; asserted by the trusted producer backend."
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "pattern": "^[A-Za-z0-9._:-]{1,80}$"
+            },
+            "required": false
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./schemas/kf-put.schema.json"
+              },
+              "example": {
+                "protocol": {
+                  "code": "OK_CORE_KF",
+                  "version": "1.0"
+                },
+                "source_revision": 1,
+                "source_updated_at": "2026-10-30T10:00:00+09:00",
+                "expresser_sso_sub": "example-sso-sub",
+                "summary": "Reflect on the purpose before selecting a concrete example.",
+                "activity": {
+                  "type_code": "thinking_process_map",
+                  "external_activity_id": "map-42"
+                },
+                "context_package": {
+                  "external_context_package_id": "9",
+                  "items": [
+                    {
+                      "entity_type_code": "process_node",
+                      "entity_id": "node-7",
+                      "display_order": 0,
+                      "snapshot": {
+                        "content": "Reconsider the purpose"
+                      }
+                    }
+                  ]
+                },
+                "stages": [
+                  {
+                    "stage_code": "stage1",
+                    "rendered_content": "Review the context",
+                    "slots": [
+                      {
+                        "slot_code": "situation",
+                        "value": "Preparing a research presentation"
+                      }
+                    ]
+                  },
+                  {
+                    "stage_code": "stage2",
+                    "rendered_content": "Compare alternatives",
+                    "slots": []
+                  },
+                  {
+                    "stage_code": "stage3",
+                    "rendered_content": "State the resulting insight",
+                    "slots": []
+                  }
+                ],
+                "share_group_ids": [
+                  "1"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Accepted or identical duplicate",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "knowledge_fragment_id": {
+                          "type": "string",
+                          "minLength": 0,
+                          "description": "Internal OK-Core ID; empty on delete before PUT."
+                        },
+                        "external_kf_id": {
+                          "type": "string",
+                          "minLength": 0
+                        },
+                        "accepted_revision": {
+                          "type": "integer"
+                        },
+                        "duplicate": {
+                          "type": "boolean"
+                        },
+                        "synced_at": {
+                          "type": "string",
+                          "minLength": 0,
+                          "format": "date-time",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$"
+                        }
+                      },
+                      "required": [
+                        "knowledge_fragment_id",
+                        "external_kf_id",
+                        "accepted_revision"
+                      ]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid token or actor header",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong system, scope, inactive user, owner or group",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown route",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale/conflicting revision or legacy collation collision",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload exceeds 1 MiB",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Use application/json",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unsupported protocol or field length",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Configuration or database unavailable",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteKnowledgeFragment",
+        "summary": "Notify source deletion",
+        "description": "Scope fragments:delete. Logical deletion removes all shares. Revision must increase; identical deletion retry succeeds.",
+        "security": [
+          {
+            "SourceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Acting-User-Sub",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 191,
+              "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+            },
+            "required": true,
+            "description": "SSO sub of an active OK-Core user; asserted by the trusted producer backend."
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "pattern": "^[A-Za-z0-9._:-]{1,80}$"
+            },
+            "required": false
+          },
+          {
+            "name": "X-Source-Revision",
+            "in": "header",
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9223372036854775807
+                },
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 19,
+                  "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
+                }
+              ],
+              "description": "Use decimal strings outside the JavaScript safe integer range."
+            },
+            "required": true
+          },
+          {
+            "name": "X-Source-Deleted-At",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "minLength": 0,
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted or identical duplicate",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "knowledge_fragment_id": {
+                          "type": "string",
+                          "minLength": 0,
+                          "description": "Internal OK-Core ID; empty on delete before PUT."
+                        },
+                        "external_kf_id": {
+                          "type": "string",
+                          "minLength": 0
+                        },
+                        "accepted_revision": {
+                          "type": "integer"
+                        },
+                        "duplicate": {
+                          "type": "boolean"
+                        },
+                        "synced_at": {
+                          "type": "string",
+                          "minLength": 0,
+                          "format": "date-time",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$"
+                        }
+                      },
+                      "required": [
+                        "knowledge_fragment_id",
+                        "external_kf_id",
+                        "accepted_revision"
+                      ]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed input",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/invalid token or actor header",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Wrong system, scope, inactive user, owner or group",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown route",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale/conflicting revision or legacy collation collision",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload exceeds 1 MiB",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Use application/json",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unsupported protocol or field length",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Configuration or database unavailable",
+            "headers": {
+              "X-Request-Id": {
+                "description": "Caller ID or generated ID, also in meta.request_id.",
+                "schema": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/knowledge-fragments/{external_kf_id}/context": {
+      "get": {
+        "operationId": "getProducerContextByKf",
+        "summary": "Producer-owned context API (not hosted by OK-Core)",
+        "servers": [
+          {
+            "url": "http://localhost:8888/forest-platform/api/v1",
+            "description": "Forest reference; replace with registered producer API base."
+          }
+        ],
+        "security": [
+          {
+            "ProducerContextBearer": []
+          }
+        ],
+        "description": "OK-Core verifies active user, group and KF sharing before signing. Version context-v1 signs newline-separated fields: OK_CORE_CONTEXT_V1, system_code, GET, resource_path (without /api/v1 or query), format, external_kf_id, group_id, actor_sub, timestamp, legacy_reference (or empty), legacy_type (or empty). HMAC-SHA256 with that producer ingestion token, lowercase hex, timestamp tolerance 120 seconds. Forest IDs are positive INT strings. The package must belong to the active source KF. No Forest viewer registration/group membership is required. Legacy thinking-process-map grants remain supported.",
+        "parameters": [
+          {
+            "name": "external_kf_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Acting-User-Sub",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Knowledge-Group-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Source-System-Code",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-OK-Core-Proof-Version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-OK-Core-Proof-Time",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-OK-Core-Proof",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-KF-Source-Reference",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-KF-Source-Type",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "context-package.v1",
+                "forest.thinking-process-map.v1"
+              ],
+              "default": "context-package.v1"
+            }
+          },
+          {
+            "name": "X-External-KF-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Context retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid read token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Invalid, modified or expired grant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or deleted KF, package or record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unsupported format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Source DB failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Read token not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/kf-context-packages/{external_context_package_id}": {
+      "get": {
+        "operationId": "getProducerContextPackage",
+        "summary": "Producer-owned context API (not hosted by OK-Core)",
+        "servers": [
+          {
+            "url": "http://localhost:8888/forest-platform/api/v1",
+            "description": "Forest reference; replace with registered producer API base."
+          }
+        ],
+        "security": [
+          {
+            "ProducerContextBearer": []
+          }
+        ],
+        "description": "OK-Core verifies active user, group and KF sharing before signing. Version context-v1 signs newline-separated fields: OK_CORE_CONTEXT_V1, system_code, GET, resource_path (without /api/v1 or query), format, external_kf_id, group_id, actor_sub, timestamp, legacy_reference (or empty), legacy_type (or empty). HMAC-SHA256 with that producer ingestion token, lowercase hex, timestamp tolerance 120 seconds. Forest IDs are positive INT strings. The package must belong to the active source KF. No Forest viewer registration/group membership is required. Legacy thinking-process-map grants remain supported.",
+        "parameters": [
+          {
+            "name": "external_context_package_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Acting-User-Sub",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Knowledge-Group-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Source-System-Code",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-OK-Core-Proof-Version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-OK-Core-Proof-Time",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-OK-Core-Proof",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-KF-Source-Reference",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-KF-Source-Type",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "context-package.v1",
+                "forest.thinking-process-map.v1"
+              ],
+              "default": "context-package.v1"
+            }
+          },
+          {
+            "name": "X-External-KF-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Context retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid read token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Invalid, modified or expired grant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing or deleted KF, package or record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unsupported format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Source DB failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Read token not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "SourceBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Distinct app-owned token per system_code. Disabled systems cannot authenticate."
+      },
+      "ProducerContextBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Producer read token; distinct from the ingestion token used as the HMAC key."
+      }
+    },
+    "schemas": {
+      "Meta": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "^[A-Za-z0-9._:-]{1,80}$"
+          }
+        },
+        "required": [
+          "request_id"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 1
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "minLength": 0
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 0
+                    }
+                  },
+                  "required": [
+                    "field",
+                    "reason"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "error",
+          "meta"
+        ]
+      },
+      "ContextResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "format": {
+                    "const": "context-package.v1"
+                  },
+                  "external_kf_id": {
+                    "type": "string"
+                  },
+                  "context_package": {
+                    "type": "object",
+                    "properties": {
+                      "external_context_package_id": {
+                        "type": "string"
+                      },
+                      "activity": {
+                        "type": "object"
+                      },
+                      "items": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "entity_type_code": {
+                              "type": "string"
+                            },
+                            "entity_id": {
+                              "type": "string"
+                            },
+                            "display_order": {
+                              "type": "integer"
+                            },
+                            "snapshot": {
+                              "oneOf": [
+                                {
+                                  "type": "object"
+                                },
+                                {
+                                  "type": "array",
+                                  "maxItems": 0
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "entity_type_code",
+                            "entity_id",
+                            "display_order",
+                            "snapshot"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "external_context_package_id",
+                      "activity",
+                      "items"
+                    ]
+                  }
+                },
+                "required": [
+                  "format",
+                  "external_kf_id",
+                  "context_package"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "format": {
+                    "const": "forest.thinking-process-map.v1"
+                  },
+                  "external_kf_id": {
+                    "type": "string"
+                  },
+                  "map": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "format",
+                  "external_kf_id",
+                  "map"
+                ]
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      }
+    }
+  }
+}

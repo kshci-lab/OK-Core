@@ -87,7 +87,16 @@
             }
             showThinkingProcessMap({ source_type: 'experience', source_record_id: sourceId });
         });
+        const contextButton = document.createElement('button');
+        contextButton.type = 'button';
+        contextButton.textContent = '形成文脈を表示';
+        contextButton.addEventListener('click', () => {
+            const id = cardSourceId;
+            hideCardMenu();
+            if (typeof window.showSourceContext === 'function') window.showSourceContext(id);
+        });
         cardMenu.appendChild(openButton);
+        cardMenu.appendChild(contextButton);
         document.body.appendChild(cardMenu);
         workspace.addEventListener('contextmenu', (event) => {
             const card = event.target && event.target.closest
@@ -99,6 +108,7 @@
             event.preventDefault();
             cardSourceId = sourceId;
             cardSourceType = sourceType;
+            contextButton.hidden = sourceType !== 'experience';
             openButton.textContent = sourceType === 'discussion'
                 ? '議論の文字起こしを表示' : '思考過程表出化マップを表示';
             cardMenu.style.display = 'block';
@@ -295,6 +305,7 @@
             if (!response.ok || result.status !== 'ok' || !result.map) {
                 const messages = {
                     source_fragment_unavailable: 'このKFにはForestの思考過程マップへの参照がありません。',
+                    CONTEXT_NOT_FOUND: 'Forest側に元KFまたは対応する文脈が見つかりません。',
                     PROCESS_MAP_NOT_FOUND: 'Forest側に元KFまたは対応する思考過程マップが見つかりません。',
                     FOREST_NOT_CONFIGURED: 'Forest参照APIが設定されていません。',
                     PROCESS_MAP_FORBIDDEN: 'この思考過程マップを閲覧する権限がありません。',

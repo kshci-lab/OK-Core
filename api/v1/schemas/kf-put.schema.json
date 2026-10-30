@@ -1,0 +1,218 @@
+{
+  "type": "object",
+  "properties": {
+    "protocol": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "const": "OK_CORE_KF"
+        },
+        "version": {
+          "const": "1.0"
+        }
+      },
+      "required": [
+        "code",
+        "version"
+      ]
+    },
+    "source_revision": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 19,
+          "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6]|9223372036854775807)$"
+        }
+      ],
+      "description": "Use decimal strings outside the JavaScript safe integer range."
+    },
+    "source_updated_at": {
+      "type": "string",
+      "minLength": 0,
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$"
+    },
+    "expresser_sso_sub": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 191
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "\\S"
+    },
+    "activity": {
+      "type": "object",
+      "properties": {
+        "type_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "\\S"
+        },
+        "external_activity_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 191,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "type_code",
+        "external_activity_id"
+      ]
+    },
+    "context_package": {
+      "type": "object",
+      "properties": {
+        "external_context_package_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 191,
+          "pattern": "\\S"
+        },
+        "created_at": {
+          "type": "string",
+          "minLength": 0,
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "entity_type_code": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "\\S"
+              },
+              "entity_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 191,
+                "pattern": "\\S"
+              },
+              "display_order": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2147483647
+              },
+              "snapshot": {
+                "oneOf": [
+                  {
+                    "type": "object"
+                  },
+                  {
+                    "type": "array",
+                    "maxItems": 0
+                  }
+                ],
+                "description": "Empty array accepted for legacy Forest; prefer an object."
+              }
+            },
+            "required": [
+              "entity_type_code",
+              "entity_id",
+              "display_order",
+              "snapshot"
+            ]
+          }
+        }
+      },
+      "required": [
+        "external_context_package_id",
+        "items"
+      ]
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "stage_code": {
+            "enum": [
+              "stage1",
+              "stage2",
+              "stage3"
+            ]
+          },
+          "rendered_content": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 255
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slot_code": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^\\S(?:.*\\S)?$"
+                },
+                "value": {
+                  "type": "string",
+                  "minLength": 0,
+                  "maxLength": 65535
+                }
+              },
+              "required": [
+                "slot_code",
+                "value"
+              ]
+            }
+          }
+        },
+        "required": [
+          "stage_code"
+        ]
+      },
+      "description": "Distinct stage codes. Duplicate stage/slot codes are rejected by server."
+    },
+    "share_group_ids": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10,
+            "pattern": "^(?:[1-9][0-9]{0,8}|1[0-9]{9}|20[0-9]{8}|21[0-3][0-9]{7}|214[0-6][0-9]{6}|2147[0-3][0-9]{5}|21474[0-7][0-9]{4}|214748[0-2][0-9]{3}|2147483[0-5][0-9]{2}|21474836[0-3][0-9]{1}|214748364[0-6]|2147483647)$"
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "protocol",
+    "source_revision",
+    "source_updated_at",
+    "expresser_sso_sub",
+    "summary",
+    "activity",
+    "context_package",
+    "stages",
+    "share_group_ids"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ok-core:api:v1:kf-put",
+  "title": "OK-Core KF PUT: protocol OK_CORE_KF 1.0",
+  "additionalProperties": true
+}

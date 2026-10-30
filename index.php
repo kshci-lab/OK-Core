@@ -285,6 +285,8 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
     </dialog>
 
     <script src="js/organizational-map.js?v=<?php echo (int)filemtime(__DIR__ . '/js/organizational-map.js'); ?>"></script>
+    <link rel="stylesheet" href="css/source-context-viewer.css?v=<?php echo (int)filemtime(__DIR__ . '/css/source-context-viewer.css'); ?>">
+    <script src="js/source-context-viewer.js?v=<?php echo (int)filemtime(__DIR__ . '/js/source-context-viewer.js'); ?>"></script>
     <script src="js/thinking-process-viewer.js?v=<?php echo (int)filemtime(__DIR__ . '/js/thinking-process-viewer.js'); ?>"></script>
     <script src="js/discussion-transcript-viewer.js?v=<?php echo (int)filemtime(__DIR__ . '/js/discussion-transcript-viewer.js'); ?>"></script>
     <script src="js/organizational-combination-tab.js?v=<?php echo (int)filemtime(__DIR__ . '/js/organizational-combination-tab.js'); ?>"></script>

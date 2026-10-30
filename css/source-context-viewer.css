@@ -1,0 +1,17 @@
+.source-context-dialog {
+    width: min(960px, calc(100vw - 48px));
+    max-height: calc(100vh - 48px);
+    padding: 0;
+    border: 1px solid #bbb;
+    border-radius: 8px;
+    background: #fff;
+    color: #222;
+}
+.source-context-dialog::backdrop { background: rgba(0, 0, 0, .42); }
+.source-context-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #ddd; }
+.source-context-toolbar h2 { flex: 1; margin: 0; font-size: 18px; }
+.source-context-toolbar button { padding: 6px 10px; cursor: pointer; }
+.source-context-status { margin: 0; padding: 12px 16px; background: #f4f6f8; white-space: pre-wrap; }
+.source-context-content { padding: 0 16px 16px; }
+.source-context-content article { border-top: 1px solid #ddd; margin-top: 16px; }
+.source-context-content pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; }

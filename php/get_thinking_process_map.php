@@ -6,7 +6,7 @@ require_once __DIR__ . '/session_bootstrap.php';
 hcimlab_start_session();
 require_once __DIR__ . '/connect_db.php';
 require_once __DIR__ . '/knowledge_group_access.php';
-require_once __DIR__ . '/forest_process_map_client.php';
+require_once __DIR__ . '/source_context_service.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store');
@@ -42,62 +42,14 @@ if ($group['status'] !== 200 || $group['group_id'] === '') {
 }
 
 try {
-    $fragmentId = (int)$fragmentRaw;
-    $groupId = (int)$groupRaw;
-    $statement = $mysqli->prepare(
-        'SELECT ek.experience_knowledge_id, ek.thought_experience_node_id, ek.experience_type,
-                ek.knowledge_fragment_content,
-                km.external_kf_id
-           FROM shared_nodes sn
-           INNER JOIN experience_knowledges ek
-              ON ek.experience_knowledge_id = sn.knowledge_fragment_id
-           LEFT JOIN kf_source_mappings km
-              ON km.experience_knowledge_id = ek.experience_knowledge_id
-             AND km.source_system = ? AND km.source_deleted_at IS NULL
-          WHERE sn.fragment_source_type = \'experience\'
-            AND sn.knowledge_group_id = ? AND sn.deleted = 0
-            AND ek.experience_knowledge_id = ? AND ek.deleted = 0
-          LIMIT 1'
-    );
-    if (!$statement) {
-        throw new RuntimeException('KF照合に失敗しました。');
-    }
-    $sourceSystem = 'forest-platform';
-    $statement->bind_param('sii', $sourceSystem, $groupId, $fragmentId);
-    $statement->execute();
-    $result = $statement->get_result();
-    $fragment = $result ? $result->fetch_assoc() : null;
-    if ($result) $result->free();
-    $statement->close();
-    if (!$fragment) {
-        ok_core_process_map_reply(404, ['error' => 'fragment_not_shared']);
-    }
-
-    $mappedId = trim((string)($fragment['external_kf_id'] ?? ''));
-    $legacyReference = trim((string)($fragment['thought_experience_node_id'] ?? ''));
-    if ($mappedId !== '' && (!ctype_digit($mappedId) || (int)$mappedId <= 0)) {
-        ok_core_process_map_reply(404, ['error' => 'source_fragment_unavailable']);
-    }
-    // Legacy migrations may retain a node reference without retaining the Forest KF ID.
-    if ($mappedId === '' && $legacyReference === '') {
-        ok_core_process_map_reply(404, ['error' => 'source_fragment_unavailable']);
-    }
-    $externalId = $mappedId !== '' ? (int)$mappedId : $fragmentId;
-    $map = forest_process_map_fetch($externalId, $actingSub, $groupId,
-        $mappedId === '' ? $legacyReference : '',
-        $mappedId === '' ? (string)$fragment['experience_type'] : '');
-    if ((string)($map['external_kf_id'] ?? '') !== (string)$externalId
-        || ($mappedId === '' && (string)($map['source_reference'] ?? '') !== $legacyReference)) {
-        ok_core_process_map_reply(502, ['error' => 'source_identity_mismatch']);
-    }
+    $fragment = source_context_fragment($mysqli, $userId, (int)$groupRaw, (int)$fragmentRaw, $actingSub);
+    $result = source_context_result($fragment, $actingSub, (int)$groupRaw, 'forest.thinking-process-map.v1', 'latest');
+    $map = $result['data']['map'];
     $map['summary'] = (string)$fragment['knowledge_fragment_content'];
     ok_core_process_map_reply(200, ['status' => 'ok', 'map' => $map]);
-} catch (ForestProcessMapException $error) {
-    ok_core_process_map_reply($error->httpStatus, [
-        'error' => $error->errorCode,
-        'message' => $error->getMessage(),
-    ]);
+} catch (SourceContextException $error) {
+    ok_core_process_map_reply($error->httpStatus, ['error' => $error->errorCode, 'message' => $error->getMessage()]);
 } catch (Throwable $error) {
-    error_log('OK-Core process map read failed: ' . $error->getMessage());
+    error_log('OK-Core process map read failed: ' . get_class($error));
     ok_core_process_map_reply(500, ['error' => 'process_map_read_failed']);
 }
