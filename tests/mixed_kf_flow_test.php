@@ -41,6 +41,9 @@ $case = $argv[1] ?? 'store';
 mixed_shadow($mysqli, 'discussion_history');
 mixed_shadow($mysqli, 'knowledge_explorer');
 mixed_shadow($mysqli, 'knowledge_explorer_fragment_links');
+// Creation/update now append backups. Shadow those too, never touch real histories.
+// These integration cases require the manually applied history migration.
+if (in_array($case, ['create', 'update'], true)) mixed_shadow($mysqli, 'organizational_knowledge_histories');
 
 if ($case === 'store') {
     ok_core_insert_discussion($mysqli, $user, 'mixed', $refs);

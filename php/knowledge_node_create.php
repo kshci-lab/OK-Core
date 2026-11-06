@@ -5,6 +5,7 @@ ini_set('display_errors', '0');
 require_once __DIR__ . '/session_bootstrap.php';
 require_once __DIR__ . '/knowledge_group_access.php';
 require_once __DIR__ . '/fragment_references.php';
+require_once __DIR__ . '/organizational_knowledge_history_store.php';
 hcimlab_start_session();
 require_once __DIR__ . '/connect_db.php';
 
@@ -15,6 +16,7 @@ function node_create_reply(int $code, string $status, string $message, array $ex
 }
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') node_create_reply(405, 'error', 'Method Not Allowed');
 if (!isset($mysqli) || !($mysqli instanceof mysqli)) node_create_reply(503, 'error', 'DB接続失敗');
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 $mysqli->set_charset('utf8mb4');
 $userId = (string)($_SESSION['USERID'] ?? '');
 $access = ok_core_resolve_active_group($mysqli, trim((string)($_POST['group_id'] ?? '')), $userId);
@@ -43,6 +45,7 @@ $why = trim((string)($_POST['tacto_why'] ?? ''));
 $basis = trim((string)($_POST['organizational_basis'] ?? ($_POST['kf_common_points'] ?? '')));
 try {
     $mysqli->begin_transaction();
+    ok_core_require_organizational_history_storage($mysqli);
     if ($parentId !== null) {
         $stmt = $mysqli->prepare('SELECT knowledge_node_id FROM knowledge_explorer WHERE knowledge_node_id = ? AND knowledge_group_id = ? AND deleted = 0 FOR UPDATE');
         $stmt->bind_param('ii', $parentId, $groupId);
@@ -89,8 +92,13 @@ try {
         }
         $stmt->close();
     }
+    $historyId = ok_core_save_organizational_knowledge_history($mysqli, 'knowledge_explorer', (string)$nodeId,
+        $groupId, $uid, 'created', bin2hex(random_bytes(16)));
     $mysqli->commit();
-    node_create_reply(200, 'ok', '登録しました', ['node_id'=>$nodeId,'parent_id'=>$parentId,'node_title'=>$title,'fragment_link_count'=>count($fragmentRefs),'fragment_refs'=>$fragmentRefs]);
+    node_create_reply(200, 'ok', '登録しました', ['node_id'=>$nodeId,'parent_id'=>$parentId,'node_title'=>$title,'fragment_link_count'=>count($fragmentRefs),'fragment_refs'=>$fragmentRefs,'history_id'=>$historyId]);
+} catch (OrganizationalHistoryStorageException $error) {
+    $mysqli->rollback();
+    node_create_reply(503, 'error', $error->getMessage());
 } catch (DomainException $error) {
     $mysqli->rollback();
     node_create_reply(403, 'error', $error->getMessage());

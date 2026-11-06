@@ -491,6 +491,12 @@
       cancel.style.color = '#333';
 
       menu.appendChild(del);
+      var saveHistory = document.createElement('div');
+      saveHistory.id = 'kt-conmenu-save-history';
+      saveHistory.textContent = '履歴を保存';
+      saveHistory.style.padding = '6px 10px';
+      saveHistory.style.cursor = 'pointer';
+      menu.appendChild(saveHistory);
       menu.appendChild(cancel);
       document.body.appendChild(menu);
     }
@@ -569,6 +575,8 @@
           var xhr = new XMLHttpRequest();
           var fd = new FormData();
           fd.append('node_id', String(id));
+          var deleteGroupId = getSelectedGroupId();
+          if(deleteGroupId) fd.append('group_id', deleteGroupId);
           xhr.open('POST', 'php/mark_delete_knowledge_node.php', true);
           xhr.onreadystatechange = function(){
             if(xhr.readyState !== 4) return;
@@ -591,6 +599,36 @@
           xhr.send(fd);
         }catch(_){ }
         hide();
+      }, false);
+    }
+    var saveHistoryBtn = document.getElementById('kt-conmenu-save-history');
+    if(saveHistoryBtn && !saveHistoryBtn.__bound){
+      saveHistoryBtn.__bound = true;
+      saveHistoryBtn.addEventListener('click', function(){
+        var target = menu._target;
+        var nodeId = target ? String(target.getAttribute('data-node-id') || '') : '';
+        var groupId = getSelectedGroupId();
+        hide();
+        if(!/^[1-9][0-9]*$/.test(nodeId) || !groupId) return;
+        if(saveHistoryBtn.__saving) return;
+        saveHistoryBtn.__saving = true;
+        var fd = new FormData();
+        fd.append('source_table', 'knowledge_explorer');
+        fd.append('node_id', nodeId);
+        fd.append('group_id', groupId);
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'php/save_organizational_knowledge_history.php', true);
+        xhr.timeout = 30000;
+        function finish(){
+          saveHistoryBtn.__saving = false;
+          var result = null;
+          try{ result = JSON.parse(xhr.responseText || '{}'); }catch(_){ }
+          if(window.alert) alert(result && result.message ? result.message : '履歴を保存できませんでした');
+        }
+        xhr.onload = finish;
+        xhr.onerror = finish;
+        xhr.ontimeout = finish;
+        xhr.send(fd);
       }, false);
     }
     if(cancelBtn && !cancelBtn.__bound){
@@ -2859,6 +2897,8 @@
           var fd = new FormData();
           fd.append('node_id', String(nodeId));
           fd.append('new_title', val);
+          var renameGroupId = getSelectedGroupId();
+          if(renameGroupId) fd.append('group_id', renameGroupId);
           xhr.open('POST', 'php/update_node_title.php', true);
           xhr.onreadystatechange = function(){
             if(xhr.readyState !== 4) return;

@@ -1,0 +1,17 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="org-history-diff" name="組織知履歴：追加1表">
+    <mxGraphModel dx="1100" dy="800" grid="1" gridSize="10" page="1" pageWidth="1100" pageHeight="850">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="heading" value="指定ER図との差分（2026-11-06）&lt;br&gt;橙色＝追加1表 / 元の組織知テーブルは変更なし / 線は論理参照（FKなし）&lt;br&gt;赤字＝履歴表の追補：保存者のNULL許可・元のcreated_at/updated_atを2列追加" style="text;html=1;align=left;fontSize=17;whiteSpace=wrap;" vertex="1" parent="1"><mxGeometry x="40" y="20" width="980" height="70" as="geometry"/></mxCell>
+        <mxCell id="canonical" value="&lt;b&gt;organizational_knowledges&lt;/b&gt;&lt;br&gt;指定ER図の組織知本体&lt;br&gt;organizational_knowledge_id&lt;br&gt;&lt;br&gt;構造変更なし&lt;br&gt;確認したローカルDBでは未作成" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#4f8a5b;fontSize=14;spacing=12;" vertex="1" parent="1"><mxGeometry x="40" y="130" width="320" height="180" as="geometry"/></mxCell>
+        <mxCell id="legacy" value="&lt;b&gt;knowledge_explorer&lt;/b&gt;&lt;br&gt;現行画面の組織知本体&lt;br&gt;knowledge_node_id&lt;br&gt;&lt;br&gt;構造変更なし" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f3f4f6;strokeColor=#6b7280;fontSize=14;spacing=12;" vertex="1" parent="1"><mxGeometry x="40" y="400" width="320" height="160" as="geometry"/></mxCell>
+        <mxCell id="history" value="&lt;b&gt;【追加】organizational_knowledge_histories&lt;/b&gt;&lt;br&gt;&lt;br&gt;PK history_id : BIGINT UNSIGNED&lt;br&gt;source_table : VARCHAR(64)&lt;br&gt;organizational_knowledge_id : BIGINT UNSIGNED&lt;br&gt;knowledge_group_id : INT&lt;br&gt;event_type : VARCHAR(32)&lt;br&gt;operation_id : CHAR(32)&lt;br&gt;snapshot_version : SMALLINT UNSIGNED&lt;br&gt;snapshot_json : LONGTEXT（JSON検査）&lt;br&gt;snapshot_sha256 : CHAR(64)&lt;br&gt;&lt;font color=&quot;#b91c1c&quot;&gt;&lt;b&gt;saved_by_user_id : INT NULL&lt;/b&gt;&lt;/font&gt;&lt;br&gt;&lt;font color=&quot;#b91c1c&quot;&gt;&lt;b&gt;【追加】created_at : DATETIME(3) NULL&lt;br&gt;【追加】updated_at : DATETIME(3) NULL&lt;/b&gt;&lt;/font&gt;&lt;br&gt;saved_at : DATETIME(3)（バックアップ日時）&lt;br&gt;&lt;br&gt;追記のみ・元データ削除後も保持&lt;br&gt;元テーブルへの外部キーなし" style="rounded=0;whiteSpace=wrap;html=1;align=left;fillColor=#fff3d6;strokeColor=#d97706;strokeWidth=3;fontSize=14;spacing=16;" vertex="1" parent="1"><mxGeometry x="520" y="130" width="480" height="490" as="geometry"/></mxCell>
+        <mxCell id="canonical_history" value="1 : N&lt;br&gt;source_table ＋ 元ID" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" source="canonical" target="history" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="legacy_history" value="1 : N&lt;br&gt;互換対応" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;dashed=1;fontSize=12;labelBackgroundColor=#ffffff;" edge="1" source="legacy" target="history" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="note" value="JSONに本体全カラム・KFリンクを保存。正規化構造ではカテゴリ・組織知の議論投稿も保存。&lt;br&gt;登録時、変更後、手動保存時に追記。内容更新のbefore_updateは保存しない。履歴追加失敗時は本体の変更もロールバック。&lt;br&gt;変更側：OK-Coreのみ / SQLは利用者が適用 / Forest-platformへの変更なし" style="text;html=1;align=left;whiteSpace=wrap;fontSize=14;" vertex="1" parent="1"><mxGeometry x="40" y="620" width="960" height="110" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
