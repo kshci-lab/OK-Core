@@ -27,7 +27,16 @@ require_once __DIR__ . '/php/connect_db.php';
 $username = isset($_SESSION['USERNAME']) ? (string)$_SESSION['USERNAME'] : 'User';
 
 if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
+    http_response_code(503);
     $dbError = isset($db_connection_error) ? (string)$db_connection_error : 'Database connection failed.';
+    $dbErrorCode = (int)($db_connection_error_code ?? 0);
+    $dbAdvice = match ($dbErrorCode) {
+        1045, 1698 => 'DBユーザーの認証に失敗しています。php/connect_db.phpの接続ユーザー・パスワードと、DB側の認証方式・接続権限を確認してください。',
+        1044 => '指定したデータベースへのアクセス権限がありません。接続ユーザーと対象DBの権限を確認してください。',
+        1049 => '指定したデータベースが見つかりません。DB名が正しいか、対象DBが作成済みかを確認してください。',
+        2002, 2003 => 'DBサーバーへ接続できません。ホスト・ポート・ソケットと、DBサーバーの稼働状態を確認してください。',
+        default => 'php/connect_db.phpとOK_CORE_DB_*の接続設定を確認してください。',
+    };
     ?>
     <!doctype html>
     <html lang="ja">
@@ -40,10 +49,9 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
     <body class="auth-page">
         <main class="auth-box">
             <h1>OK-Core</h1>
-            <p>開発用ログインには成功していますが、データベースがまだ準備されていません。</p>
+            <p>ログインセッションは確認できていますが、データベースへの接続に失敗しました。</p>
             <pre><?php echo htmlspecialchars($dbError, ENT_QUOTES, 'UTF-8'); ?></pre>
-            <p>まずは `ok_core` データベースを作成するか、`php/import_kf_stub.php` へ POST 疎通を確認してください。</p>
-            <a class="primary-link" href="php/import_kf_stub.php">KF stub を開く</a>
+            <p><?php echo htmlspecialchars($dbAdvice, ENT_QUOTES, 'UTF-8'); ?></p>
         </main>
     </body>
     </html>
