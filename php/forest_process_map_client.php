@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+require_once __DIR__ . '/deployment_urls.php';
 
 final class ForestProcessMapException extends RuntimeException
 {
@@ -10,7 +11,7 @@ final class ForestProcessMapException extends RuntimeException
     }
 }
 
-function forest_process_map_config(): array
+function forest_process_map_config(?bool $automaticUrls = null): array
 {
     $config = ['base_url' => '', 'token' => '', 'timeout_seconds' => 10];
     $localPath = __DIR__ . '/forest_process_map_local.php';
@@ -32,7 +33,9 @@ function forest_process_map_config(): array
     }
     // Match the KF sender: application-owned configuration wins over stale SetEnv values.
     if (isset($local) && is_array($local)) $config = array_replace($config, $local);
-    $config['base_url'] = rtrim((string)$config['base_url'], '/');
+    $config['auto_detect_urls'] = $automaticUrls ?? (bool)($config['auto_detect_urls'] ?? true);
+    $config['base_url'] = kf_deployment_url((string)$config['base_url'], 'forest-platform', '/api/v1', null, null,
+        $config['auto_detect_urls']);
     $config['token'] = (string)$config['token'];
     $config['timeout_seconds'] = max(1, (int)$config['timeout_seconds']);
     return $config;
