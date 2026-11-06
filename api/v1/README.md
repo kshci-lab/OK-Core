@@ -179,6 +179,33 @@ DB変更は実行せず、変更側・対象DB・テーブル追加/カラム変
 
 ## 10. 段階2：Forestの参照実装
 
+### ローカル・本番のURL自動切替（2026-11-06）
+
+両システムの`php/deployment_urls.php`が、既知の標準URLを実行環境に合わせて選び直す。設定ファイルを配備のたびに編集する必要はない。
+
+| 環境 | Forest基点 | OK-Core基点 |
+| --- | --- | --- |
+| localhost / 127.0.0.1 / IPv6ループバック | ローカルのオリジン＋`/forest-platform` | 同じオリジン＋`/OK-Core` |
+| archive.kshci-lab.net | `https://archive.kshci-lab.net/software/forest-platform` | `https://archive.kshci-lab.net/software/OK-Core` |
+
+切替対象はForest→OK-CoreのKF・グループAPI、OK-Core→Forestの文脈API、両側SSOのbase_url/redirect_uri、ForestのOK-Core外部リンク。APIでは基点に`/api/v1`、SSOでは`/auth/callback`を付ける。ローカルのポートと`/software/`等の設置先接頭辞もリクエストから引き継ぐ。本番URLをコピーしたローカル設定、ローカルURLをコピーした本番設定の両方を補正する。認証トークン・client_id・client_secretは変更しない。
+
+明示された`APP_ENV=production`または`local`を優先し、未指定なら既知のアクセス先ホストから判定する。任意のHostをAPI接続先に変換しない。他ドメイン・独自パスの明示設定はそのまま使用する。標準URLを意図的に固定したい場合だけ、該当設定の`auto_detect_urls => false`を指定する。Forest送信設定、SSO設定、OK-CoreのForest登録設定または旧Forest参照設定で利用できる。
+
+CLIにはアクセス元ホストがないため、cronには一度だけ実行環境を指定する。ApacheのSetEnvは不要で、URLの書き換えも不要。環境指定なしのCLIは従来の明示URLを保持する。例：
+
+```bash
+php scripts/check-ok-core-connection.php --environment=production
+php scripts/retry-ok-core-outbox.php --environment=production --dry-run
+php scripts/retry-ok-core-outbox.php --environment=production --limit=20
+```
+
+SSOの本番・ローカルのリダイレクトURIは、認証サーバー側にそれぞれ登録しておく。SSOクライアントやトークンが環境別の場合、その認証情報は各環境の非公開設定として管理する。今回それらの秘密値やAWSのcronは変更していない。
+
+OpenAPIの`servers`も仕様ファイルからの相対URLとし、`/software/`の有無に対応した。ファイルを別のURL・ローカルディスクからAPIツールへ読み込む場合は、仕様ファイル本来のURLを基点として解決するか、そのツールでサーバーを指定する。
+
+配備には既存の変更ファイルに加えて、**両側の`php/deployment_urls.php`**が必要。Forestの3つの外部リンク設置ページ、CLIスクリプト・cron例も同じ版で配備する。DB変更・SQL適用は不要。`php tests/deployment_urls_test.php`と既存の隔離フローテストで検証する。
+
 ### 変更範囲とDB
 
 - **Forest**：共有先をOK-Core APIから取得する。保存済み／送信待ち／送信済みを区別し、Outboxの状態を本人だけが照会できる。

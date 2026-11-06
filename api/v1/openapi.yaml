@@ -7,8 +7,8 @@
   },
   "servers": [
     {
-      "url": "/OK-Core/api/v1",
-      "description": "Local example. Replace the deployment base URL when importing."
+      "url": ".",
+      "description": "Relative to this OpenAPI document; works under both /OK-Core and /software/OK-Core."
     }
   ],
   "paths": {
@@ -1130,7 +1130,7 @@
         "summary": "Producer-owned context API (not hosted by OK-Core)",
         "servers": [
           {
-            "url": "http://localhost:8888/forest-platform/api/v1",
+            "url": "../../../forest-platform/api/v1",
             "description": "Forest reference; replace with registered producer API base."
           }
         ],
@@ -1315,7 +1315,7 @@
         "summary": "Producer-owned context API (not hosted by OK-Core)",
         "servers": [
           {
-            "url": "http://localhost:8888/forest-platform/api/v1",
+            "url": "../../../forest-platform/api/v1",
             "description": "Forest reference; replace with registered producer API base."
           }
         ],

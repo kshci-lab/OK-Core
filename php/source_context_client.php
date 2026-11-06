@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/api/v1/service.php';
+require_once __DIR__ . '/deployment_urls.php';
 
 final class SourceContextException extends RuntimeException
 {
@@ -16,11 +17,14 @@ function source_context_settings(string $system): array
     $base = (string)($source['context_base_url'] ?? '');
     $readToken = (string)($source['context_token'] ?? '');
     $timeout = (int)($source['context_timeout_seconds'] ?? 10);
+    $automaticUrls = (bool)($source['auto_detect_urls'] ?? true);
     if ($system === 'forest-platform' && !array_key_exists('context_base_url', $source)) {
         require_once __DIR__ . '/forest_process_map_client.php';
-        $legacy = forest_process_map_config();
+        $legacy = forest_process_map_config(array_key_exists('auto_detect_urls', $source) ? $automaticUrls : null);
         $base = $legacy['base_url']; $readToken = $legacy['token']; $timeout = $legacy['timeout_seconds'];
+        $automaticUrls = (bool)($legacy['auto_detect_urls'] ?? $automaticUrls);
     }
+    if ($system === 'forest-platform') $base = kf_deployment_url($base, 'forest-platform', '/api/v1', null, null, $automaticUrls);
     $url = parse_url($base);
     if ($base === '' || $readToken === '') throw new SourceContextException('産出元参照APIのURLまたはトークンが設定されていません。', 503, 'SOURCE_NOT_CONFIGURED');
     if (!$url || !in_array($url['scheme'] ?? '', ['http', 'https'], true) || empty($url['host']) ||

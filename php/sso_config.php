@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/deployment_urls.php';
 
 function hcimlab_sso_env_or_default($name, $default = null)
 {
@@ -90,4 +91,7 @@ if ($devAuthOverride !== false && $devAuthOverride !== '') {
 
 $config['environment'] = $appEnvironment;
 
+$automaticUrls = (bool)($config['auto_detect_urls'] ?? true);
+$config['base_url'] = kf_deployment_url((string)$config['base_url'], 'OK-Core', '', null, null, $automaticUrls);
+$config['redirect_uri'] = kf_deployment_url((string)$config['redirect_uri'], 'OK-Core', '/auth/callback', null, null, $automaticUrls);
 return $config;
