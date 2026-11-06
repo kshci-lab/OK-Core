@@ -1,0 +1,60 @@
+{
+  "status": "ok",
+  "group_id": 100,
+  "nodes": [
+    {
+      "node_id": 413,
+      "parent_id": null,
+      "title": "研究方略関連",
+      "content": null,
+      "category": "category",
+      "when": null,
+      "what": null,
+      "why": null,
+      "organizational_basis": null,
+      "created_at": null,
+      "updated_at": "2026-10-02 12:13:00",
+      "fragments": [],
+      "unresolved_fragment_links": [],
+      "children": [
+        {
+          "node_id": 417,
+          "parent_id": 413,
+          "title": "目標に目掛けて，取り組むべきことを細かく分解して計画立てる．",
+          "content": null,
+          "category": "knowledge",
+          "when": "何らかの目標に目掛けて取り組むとき",
+          "what": "目標に達するためのタスクの分解と，そのプランニング．",
+          "why": "研究の方向性を保ちながら研究を進めることが出来るから．",
+          "organizational_basis": "二つのKFに共通して，目的を目掛けたタスクの分割の重要性が示されていたため．",
+          "created_at": null,
+          "updated_at": "2026-09-04 13:27:00",
+          "fragments": [
+            {
+              "source_type": "experience",
+              "source_id": 11161,
+              "content": "sample experience KF",
+              "selected_contents": "selected text",
+              "stage1": "stage 1",
+              "stage2": "stage 2",
+              "stage3": "stage 3",
+              "deleted": 0
+            },
+            {
+              "source_type": "experience",
+              "source_id": 11165,
+              "content": "sample experience KF 2",
+              "selected_contents": null,
+              "stage1": null,
+              "stage2": null,
+              "stage3": null,
+              "deleted": 0
+            }
+          ],
+          "unresolved_fragment_links": [],
+          "children": []
+        }
+      ]
+    }
+  ]
+}

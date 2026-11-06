@@ -2981,7 +2981,10 @@
   function bindKnowledgeRegister(){
     var form = document.getElementById('knowledge_register_form');
     if(!form) return;
-    form.addEventListener('submit', function(){
+    form.addEventListener('submit', function(event){
+      // 保存は下記のAjaxで行うため、ブラウザ標準のフォーム送信を止める。
+      // これを止めないとページ遷移でinsert_knowledge_node.phpへの通信が中断される。
+      event.preventDefault();
       var area = qs('#kra_area_select', form);
       var content = qs('#kra_knowledge_content', form);
       var tactoWhen = qs('#kra_tacto_when', form);
