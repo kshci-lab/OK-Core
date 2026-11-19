@@ -1,9 +1,12 @@
 (function () {
     'use strict';
 
+    const ui = window.okCoreLanguage;
+
     let network = null;
     let activeRequest = null;
     let requestSerial = 0;
+    let refreshTriggers = null;
     let cardMenu = null;
     let cardSourceId = '';
     let cardSourceType = '';
@@ -26,14 +29,15 @@
         return match ? Number(match[1]) : fallback;
     };
 
-    function setStatus(message, isError) {
+    function setStatus(message, isError, values) {
         const status = byId('others_process_status');
         if (!status) return;
-        status.textContent = message;
+        ui.bind(status, message, values);
         status.classList.toggle('is-error', !!isError);
     }
 
     function destroyNetwork() {
+        refreshTriggers = null;
         if (network) {
             network.destroy();
             network = null;
@@ -73,7 +77,7 @@
         cardMenu.setAttribute('role', 'menu');
         const openButton = document.createElement('button');
         openButton.type = 'button';
-        openButton.textContent = '思考過程表出化マップを表示';
+        ui.bind(openButton, '思考過程表出化マップを表示');
         openButton.addEventListener('click', () => {
             const sourceId = cardSourceId;
             const sourceType = cardSourceType;
@@ -89,7 +93,7 @@
         });
         const contextButton = document.createElement('button');
         contextButton.type = 'button';
-        contextButton.textContent = '形成文脈を表示';
+        ui.bind(contextButton, '形成文脈を表示');
         contextButton.addEventListener('click', () => {
             const id = cardSourceId;
             hideCardMenu();
@@ -109,8 +113,8 @@
             cardSourceId = sourceId;
             cardSourceType = sourceType;
             contextButton.hidden = sourceType !== 'experience';
-            openButton.textContent = sourceType === 'discussion'
-                ? '議論の文字起こしを表示' : '思考過程表出化マップを表示';
+            ui.bind(openButton, sourceType === 'discussion'
+                ? '議論の文字起こしを表示' : '思考過程表出化マップを表示');
             cardMenu.style.display = 'block';
             const bounds = cardMenu.getBoundingClientRect();
             cardMenu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - bounds.width - 8)) + 'px';
@@ -137,6 +141,7 @@
         const known = new Set();
         const edgePairs = new Set();
         const versionTimeIds = new Map();
+        const triggerTextById = new Map();
         const focusId = String(map.focus_id || '');
         const addNode = (id, definition) => {
             id = String(id || '');
@@ -201,13 +206,27 @@
         (map.triggers || []).forEach((row, index) => {
             const id = String(row.trigger_id || '');
             const activity = String(row.activity_type || 'きっかけ');
+            const describe = () => {
+                const displayActivity = ui.t(activity);
+                let content = String(row.content || '');
+                // Forest stores a generated time/type prefix with the original text.
+                const prefix = content.match(/^【([^】]+)】/);
+                const suffix = '：' + activity;
+                if (prefix && prefix[1].endsWith(suffix) && displayActivity !== activity) {
+                    const time = prefix[1].slice(0, -suffix.length);
+                    content = '【' + time + '：' + displayActivity + '】' + content.slice(prefix[0].length);
+                }
+                return {
+                    label: label(icon ? row.activity_time : displayActivity),
+                    title: [row.activity_time, displayActivity, content].filter(Boolean).join('\n'),
+                };
+            };
             const suppliedIcon = map.trigger_icons && map.trigger_icons[row.icon_id];
             const icon = typeof suppliedIcon === 'string'
                 && /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(suppliedIcon)
                 ? suppliedIcon : '';
             const triggerNode = {
-                label: label(icon ? row.activity_time : activity),
-                title: [row.activity_time, activity, row.content].filter(Boolean).join('\n'),
+                ...describe(),
                 shape: icon ? 'circularImage' : 'dot',
                 size: icon ? 25 : 19,
                 color: { background: '#82ae46', border: id === focusId ? '#176b87' : '#5f8530' },
@@ -219,6 +238,7 @@
                 triggerNode.image = icon;
                 triggerNode.imagePadding = 7;
             }
+            if (id && !known.has(id)) triggerTextById.set(id, describe);
             addNode(id, triggerNode);
         });
         (map.process_edges || []).forEach((row) => {
@@ -244,6 +264,11 @@
             return;
         }
         const nodeData = new vis.DataSet(nodes);
+        refreshTriggers = () => {
+            if (triggerTextById.size) {
+                nodeData.update(Array.from(triggerTextById, ([id, describe]) => ({ id, ...describe() })));
+            }
+        };
         network = new vis.Network(container, {
             nodes: nodeData,
             edges: new vis.DataSet(edges),
@@ -275,7 +300,9 @@
             versionTimeIds.forEach((timeId, versionId) => alignVersionTime(versionId));
             renderedNetwork.fit({ animation: false });
         });
-        setStatus('ノード ' + (nodes.length - versionTimeIds.size) + '件・接続 ' + edges.length + '件', false);
+        setStatus('ノード {nodes}件・接続 {edges}件', false, {
+            nodes: nodes.length - versionTimeIds.size, edges: edges.length,
+        });
     }
 
     async function showThinkingProcessMap(node) {
@@ -294,7 +321,7 @@
         const currentRequest = ++requestSerial;
         destroyNetwork();
         const title = byId('others_conceptdisplay');
-        if (title) title.textContent = '思考過程表出化マップ';
+        if (title) ui.bind(title, '思考過程表出化マップ');
         setStatus('読み込み中…', false);
         try {
             const url = 'php/get_thinking_process_map.php?group_id=' + encodeURIComponent(groupId)
@@ -313,10 +340,10 @@
                     fragment_not_shared: 'このKFは選択中のOK-Coreグループに共有されていません。',
                     VIEWER_PROOF_INVALID: 'OK-Coreの閲覧確認をForestで検証できません。両システムのAPI設定とコードを確認してください。',
                 };
-                setStatus(messages[result.error] || result.message || '思考過程マップを読み込めません。', true);
+                setStatus(() => ui.t(messages[result.error] || ui.error(result.message, '思考過程マップを読み込めません。')), true);
                 return;
             }
-            if (title) title.textContent = '「' + String(result.map.summary || 'KF') + '」の思考過程';
+            ui.bind(title, '「{title}」の思考過程', { title: result.map.summary || 'KF' });
             renderMap(result.map);
         } catch (error) {
             if (error.name !== 'AbortError' && currentRequest === requestSerial) {
@@ -327,6 +354,9 @@
         }
     }
 
+    document.addEventListener('ok-core-language-change', () => {
+        if (refreshTriggers) refreshTriggers();
+    });
     window.showThinkingProcessMap = showThinkingProcessMap;
     window.closeThinkingProcessViewer = closeMap;
     document.addEventListener('DOMContentLoaded', () => {

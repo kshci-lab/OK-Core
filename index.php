@@ -44,14 +44,22 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>OK-Core</title>
-        <link rel="stylesheet" href="css/ok-core.css">
+        <link rel="stylesheet" href="css/ok-core.css?v=<?php echo (int)filemtime(__DIR__ . '/css/ok-core.css'); ?>">
+        <script src="js/ui-language.js?v=<?php echo (int)filemtime(__DIR__ . '/js/ui-language.js'); ?>"></script>
     </head>
     <body class="auth-page">
         <main class="auth-box">
             <h1>OK-Core</h1>
-            <p>ログインセッションは確認できていますが、データベースへの接続に失敗しました。</p>
+            <label class="language-control">
+                <span data-i18n>言語</span>
+                <select id="language-toggle">
+                    <option value="ja">日本語</option>
+                    <option value="en">English</option>
+                </select>
+            </label>
+            <p data-i18n>ログインセッションは確認できていますが、データベースへの接続に失敗しました。</p>
             <pre><?php echo htmlspecialchars($dbError, ENT_QUOTES, 'UTF-8'); ?></pre>
-            <p><?php echo htmlspecialchars($dbAdvice, ENT_QUOTES, 'UTF-8'); ?></p>
+            <p data-i18n><?php echo htmlspecialchars($dbAdvice, ENT_QUOTES, 'UTF-8'); ?></p>
         </main>
     </body>
     </html>
@@ -68,6 +76,7 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
     <link rel="stylesheet" href="css/organizational-network.css?v=<?php echo (int)filemtime(__DIR__ . '/css/organizational-network.css'); ?>">
     <link rel="stylesheet" href="css/organizational-map.css?v=<?php echo (int)filemtime(__DIR__ . '/css/organizational-map.css'); ?>">
     <link rel="stylesheet" href="css/ok-core.css?v=<?php echo (int)filemtime(__DIR__ . '/css/ok-core.css'); ?>">
+    <script src="js/ui-language.js?v=<?php echo (int)filemtime(__DIR__ . '/js/ui-language.js'); ?>"></script>
     <script src="js/jquery-1.8.2.min.js"></script>
     <script src="js/jquery-ui.min.js"></script>
     <script src="js/vis-network.min.js"></script>
@@ -76,24 +85,31 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
     <header class="app-header">
         <div class="brand-block">
             <div class="app-title">OK-Core</div>
-            <div class="app-subtitle">Knowledge Fragmentを組織知へ持ち上げるための整理・議論・連結化環境</div>
+            <div class="app-subtitle" data-i18n>Knowledge Fragmentを組織知へ持ち上げるための整理・議論・連結化環境</div>
         </div>
         <div class="session-block">
+            <label class="language-control">
+                <span data-i18n>言語</span>
+                <select id="language-toggle">
+                    <option value="ja">日本語</option>
+                    <option value="en">English</option>
+                </select>
+            </label>
             <span class="session-user"><?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?></span>
             <form method="post">
-                <button type="submit" name="logout" class="secondary-button">ログアウト</button>
+                <button type="submit" name="logout" class="secondary-button" data-i18n>ログアウト</button>
             </form>
         </div>
     </header>
 
     <main id="organizational_container" class="ok-main">
         <section class="toolbar-band">
-            <div class="org-subtabs" role="tablist" aria-label="組織知マップ">
-                <button type="button" id="org-tab-cooperation" class="org-subtab is-active" role="tab" aria-selected="true" aria-controls="org-tabpanel-cooperation">共同化</button>
-                <button type="button" id="org-tab-combination" class="org-subtab" role="tab" aria-selected="false" aria-controls="org-tabpanel-combination">連結化</button>
+            <div class="org-subtabs" role="tablist" aria-label="組織知マップ" data-i18n-attrs="aria-label">
+                <button type="button" id="org-tab-cooperation" class="org-subtab is-active" role="tab" aria-selected="true" aria-controls="org-tabpanel-cooperation" data-i18n>共同化</button>
+                <button type="button" id="org-tab-combination" class="org-subtab" role="tab" aria-selected="false" aria-controls="org-tabpanel-combination" data-i18n>連結化</button>
             </div>
             <form id="group_select_form" class="group_select_form" action="javascript:void(0);">
-                <label for="group_select" id="group_select_label">組織</label>
+                <label for="group_select" id="group_select_label" data-i18n>組織</label>
                 <select id="group_select" name="group_select"></select>
                 <span id="group_kf_status" class="group-kf-status" role="status" aria-live="polite"></span>
             </form>
@@ -102,27 +118,27 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
         <section id="org-tabpanel-cooperation" class="org-subtab-panel is-active ok-panel" role="tabpanel" aria-labelledby="org-tab-cooperation">
             <div id="myOrganizationalnetwork_area" class="network-area">
                 <div id="buttoncluster" class="network-toolbar">
-                    <button type="button" class="Organizational_network_button" id="organizational_ZoomIn">拡大</button>
-                    <button type="button" class="Organizational_network_button" id="organizational_ZoomOut">縮小</button>
+                    <button type="button" class="Organizational_network_button" id="organizational_ZoomIn" data-i18n>拡大</button>
+                    <button type="button" class="Organizational_network_button" id="organizational_ZoomOut" data-i18n>縮小</button>
                     <div class="filter-toolbar">
-                        <div class="source-filter" data-filter-scope="cooperation" aria-label="KFの産出元フィルター">
-                            <span class="filter-heading">産出元</span>
+                        <div class="source-filter" data-filter-scope="cooperation" aria-label="KFの産出元フィルター" data-i18n-attrs="aria-label">
+                            <span class="filter-heading" data-i18n>産出元</span>
                             <button type="button" class="source-filter-btn is-active" data-source-filter="experience">experience</button>
                             <button type="button" class="source-filter-btn is-active" data-source-filter="discussion">discussion</button>
                         </div>
-                        <div class="display-filter" data-filter-scope="cooperation" aria-label="組織知表示フィルター">
-                            <span class="filter-heading">表示</span>
-                            <button type="button" class="display-filter-btn" data-display-filter="hide-organizational-knowledge">組織知</button>
+                        <div class="display-filter" data-filter-scope="cooperation" aria-label="組織知表示フィルター" data-i18n-attrs="aria-label">
+                            <span class="filter-heading" data-i18n>表示</span>
+                            <button type="button" class="display-filter-btn" data-display-filter="hide-organizational-knowledge" data-i18n>組織知</button>
                         </div>
                     </div>
                 </div>
 
                 <div id="t_Organizational_conmenu">
                     <ul>
-                        <li><a href="javascript:void(0);" id="organizational_conmenu1">思考過程表出化マップを表示</a></li>
-                        <li><a href="javascript:void(0);" id="organizational_conmenu6" style="display:none">編集する</a></li>
-                        <li><a href="javascript:void(0);" id="organizational_conmenu5" style="display:none">削除する</a></li>
-                        <li><a href="javascript:void(0);" id="organizational_conmenu4">キャンセル</a></li>
+                        <li><a href="javascript:void(0);" id="organizational_conmenu1" data-i18n>思考過程表出化マップを表示</a></li>
+                        <li><a href="javascript:void(0);" id="organizational_conmenu6" style="display:none" data-i18n>編集する</a></li>
+                        <li><a href="javascript:void(0);" id="organizational_conmenu5" style="display:none" data-i18n>削除する</a></li>
+                        <li><a href="javascript:void(0);" id="organizational_conmenu4" data-i18n>キャンセル</a></li>
                     </ul>
                 </div>
 
@@ -138,9 +154,9 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
                         <div class="comb-left-top">
                             <div id="knowledge_fragments_workspace" class="knowledge_fragments_workspace">
                                 <div class="overlay-title">
-                                    KF一覧
-                                    <div class="source-filter" data-filter-scope="fragments" aria-label="KF一覧フィルター">
-                                        <span class="filter-heading">産出元</span>
+                                    <span data-i18n>KF一覧</span>
+                                    <div class="source-filter" data-filter-scope="fragments" aria-label="KF一覧フィルター" data-i18n-attrs="aria-label">
+                                        <span class="filter-heading" data-i18n>産出元</span>
                                         <button type="button" class="source-filter-btn is-active" data-source-filter="experience">experience</button>
                                         <button type="button" class="source-filter-btn is-active" data-source-filter="discussion">discussion</button>
                                     </div>
@@ -150,51 +166,51 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
                                         <button type="button" id="kfrag-redo" class="kfrag-action-btn" disabled>Redo</button>
                                     </div>
                                 </div>
-                                <div class="knowledge-fragment-list"><div class="no-fragment-note">KFを読み込み中…</div></div>
+                                <div class="knowledge-fragment-list"><div class="no-fragment-note" data-i18n>KFを読み込み中…</div></div>
                             </div>
                         </div>
 
                         <div class="overlay-input-area">
                             <div id="discussion_history_area" class="discussion_history_area">
                                 <div class="overlay-title">
-                                    <span class="title-text">議論履歴</span>
-                                    <button type="button" id="fragment-discussed-toggle" class="fragment-discussed-btn">議論開始</button>
-                                    <button type="button" id="discussion-refresh-button" class="discussion-refresh-button" aria-label="議論履歴を更新" title="議論履歴を更新">&#x21bb;</button>
-                                    <button type="button" id="fragment-add-select-toggle" class="fragment-add-select-btn" aria-label="追加のKFを選択">
+                                    <span class="title-text" data-i18n>議論履歴</span>
+                                    <button type="button" id="fragment-discussed-toggle" class="fragment-discussed-btn" data-i18n>議論開始</button>
+                                    <button type="button" id="discussion-refresh-button" class="discussion-refresh-button" aria-label="議論履歴を更新" title="議論履歴を更新" data-i18n-attrs="aria-label title">&#x21bb;</button>
+                                    <button type="button" id="fragment-add-select-toggle" class="fragment-add-select-btn" aria-label="追加のKFを選択" data-i18n-attrs="aria-label">
                                         <span class="plus-icon" aria-hidden="true">+</span>
-                                        <span class="tooltip">追加のKFを選択</span>
+                                        <span class="tooltip" data-i18n>追加のKFを選択</span>
                                     </button>
                                 </div>
                                 <div id="fragment-selected-area" class="fragment-selected-area">
-                                    <span class="selected-label">選択中のKF</span>
+                                    <span class="selected-label" data-i18n>選択中のKF</span>
                                     <div id="fragment-selected-list" class="fragment-selected-list" aria-live="polite"></div>
                                 </div>
                                 <div class="discussion-board" id="discussion_board" data-user-name="<?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?>">
                                     <div class="message-list" id="discussion_message_list" aria-live="polite">
-                                        <div class="discussion-placeholder">議論対象のKFを選択してください。</div>
+                                        <div class="discussion-placeholder" data-i18n>議論対象のKFを選択してください。</div>
                                     </div>
                                     <form id="discussion_post_form" class="post-form" action="javascript:void(0)" style="display:none;">
-                                        <textarea id="discussion_input" class="post-input" rows="2" maxlength="255" placeholder="コメントを入力"></textarea>
-                                        <button type="submit" class="post-button">投稿</button>
+                                        <textarea id="discussion_input" class="post-input" rows="2" maxlength="255" placeholder="コメントを入力" data-i18n-attrs="placeholder"></textarea>
+                                        <button type="submit" class="post-button" data-i18n>投稿</button>
                                     </form>
                                 </div>
                             </div>
 
                             <div id="knowledge_register_area" class="knowledge_register_area">
-                                <div class="overlay-title">組織知登録</div>
+                                <div class="overlay-title" data-i18n>組織知登録</div>
                                 <form id="knowledge_register_form" class="knowledge_register_form" onsubmit="return false;">
                                     <div class="kra-row kra-top">
-                                        <label for="kra_area_select" class="kra-label">追加する領域</label>
+                                        <label for="kra_area_select" class="kra-label" data-i18n>追加する領域</label>
                                         <select id="kra_area_select" class="kra-control">
-                                            <option value="知識関連" selected>知識関連</option>
-                                            <option value="研究方略関連">研究方略関連</option>
-                                            <option value="その他">その他</option>
+                                            <option value="知識関連" selected data-i18n>知識関連</option>
+                                            <option value="研究方略関連" data-i18n>研究方略関連</option>
+                                            <option value="その他" data-i18n>その他</option>
                                         </select>
                                     </div>
                                     <div class="kra-row kra-body">
-                                        <div class="kra-section-title">知の内容</div>
-                                        <label for="kra_knowledge_content" class="kra-label">要約</label>
-                                        <textarea id="kra_knowledge_content" class="kra-control" rows="2" maxlength="255" placeholder="組織知として残したい知を一文で入力"></textarea>
+                                        <div class="kra-section-title" data-i18n>知の内容</div>
+                                        <label for="kra_knowledge_content" class="kra-label" data-i18n>要約</label>
+                                        <textarea id="kra_knowledge_content" class="kra-control" rows="2" maxlength="255" placeholder="組織知として残したい知を一文で入力" data-i18n-attrs="placeholder"></textarea>
                                     </div>
                                     <div class="kra-row">
                                         <label for="kra_tacto_when" class="kra-label">When</label>
@@ -209,15 +225,15 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
                                         <textarea id="kra_tacto_why" class="kra-control kra-structured-control" rows="2"></textarea>
                                     </div>
                                     <div class="kra-row">
-                                        <label for="kra_organizational_basis" class="kra-label">組織知化の根拠</label>
+                                        <label for="kra_organizational_basis" class="kra-label" data-i18n>組織知化の根拠</label>
                                         <textarea id="kra_organizational_basis" class="kra-control kra-structured-control" rows="3"></textarea>
                                     </div>
                                     <div class="kra-row kra-comment">
-                                        <label for="kra_comment_input" class="kra-label">補足コメント</label>
+                                        <label for="kra_comment_input" class="kra-label" data-i18n>補足コメント</label>
                                         <textarea id="kra_comment_input" class="kra-control" rows="2"></textarea>
                                     </div>
                                     <div class="kra-actions">
-                                        <button type="submit" class="button4-seci kra-submit" id="kra-submit">登録</button>
+                                        <button type="submit" class="button4-seci kra-submit" id="kra-submit" data-i18n>登録</button>
                                     </div>
                                 </form>
                                 <div id="knowledge_register_feedback" class="knowledge_register_feedback"></div>
@@ -228,15 +244,15 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
                     <div class="comb-right">
                         <div class="overlay-knowledge-tree">
                             <div class="overlay-title overlay-title-with-action">
-                                組織知ツリー
+                                <span data-i18n>組織知ツリー</span>
                                 <div class="filter-toolbar">
-                                    <div class="source-filter" data-filter-scope="knowledge-tree" aria-label="組織知ツリーフィルター">
-                                        <span class="filter-heading">産出元</span>
+                                    <div class="source-filter" data-filter-scope="knowledge-tree" aria-label="組織知ツリーフィルター" data-i18n-attrs="aria-label">
+                                        <span class="filter-heading" data-i18n>産出元</span>
                                         <button type="button" class="source-filter-btn is-active" data-source-filter="experience">experience</button>
                                         <button type="button" class="source-filter-btn is-active" data-source-filter="discussion">discussion</button>
                                     </div>
                                 </div>
-                                <button type="button" id="kt-add-node" class="kt-add-node-btn" aria-label="項目を追加">+</button>
+                                <button type="button" id="kt-add-node" class="kt-add-node-btn" aria-label="項目を追加" data-i18n-attrs="aria-label">+</button>
                             </div>
                             <div id="overlay_knowledge_tree" class="overlay_knowledge_tree"></div>
                         </div>
@@ -249,11 +265,11 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
     <dialog id="process_others_network_container" class="process-map-dialog" aria-labelledby="others_conceptdisplay" oncontextmenu="return false;">
         <div id="othersProcessnetwork_area">
             <div id="process-map-toolbar" class="network-toolbar">
-                <h2 id="others_conceptdisplay">思考過程表出化マップ</h2>
-                <button type="button" class="thinkingProcess_network_button" id="process_ZoomIn">拡大</button>
-                <button type="button" class="thinkingProcess_network_button" id="process_ZoomOut">縮小</button>
-                <button type="button" class="thinkingProcess_network_button" id="process_Fit">全体表示</button>
-                <button type="button" class="area_close" id="area_close" aria-label="思考過程マップを閉じる" autofocus>×</button>
+                <h2 id="others_conceptdisplay" data-i18n>思考過程表出化マップ</h2>
+                <button type="button" class="thinkingProcess_network_button" id="process_ZoomIn" data-i18n>拡大</button>
+                <button type="button" class="thinkingProcess_network_button" id="process_ZoomOut" data-i18n>縮小</button>
+                <button type="button" class="thinkingProcess_network_button" id="process_Fit" data-i18n>全体表示</button>
+                <button type="button" class="area_close" id="area_close" aria-label="思考過程マップを閉じる" autofocus data-i18n-attrs="aria-label">×</button>
             </div>
             <div id="others_process_status" role="status" aria-live="polite"></div>
             <div id="othersProcessnetwork"></div>
@@ -270,24 +286,24 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
         <div class="transcript-shell">
             <header class="transcript-header">
                 <div>
-                    <h2 id="transcript-heading">議論の文字起こし</h2>
+                    <h2 id="transcript-heading" data-i18n>議論の文字起こし</h2>
                     <p id="transcript-kf-title" class="transcript-kf-title"></p>
                 </div>
-                <button type="button" id="transcript-close" aria-label="文字起こしを閉じる">×</button>
+                <button type="button" id="transcript-close" aria-label="文字起こしを閉じる" data-i18n-attrs="aria-label">×</button>
             </header>
             <div class="transcript-toolbar">
-                <label for="transcript-session">セッション</label>
+                <label for="transcript-session" data-i18n>セッション</label>
                 <select id="transcript-session" disabled></select>
-                <button type="button" id="transcript-jump" disabled>KFに紐づく発言へ</button>
+                <button type="button" id="transcript-jump" disabled data-i18n>KFに紐づく発言へ</button>
             </div>
             <p id="transcript-status" class="transcript-status" role="status" aria-live="polite"></p>
-            <div id="transcript-scroll" class="transcript-scroll" tabindex="0" aria-label="セッションの文字起こし">
+            <div id="transcript-scroll" class="transcript-scroll" tabindex="0" aria-label="セッションの文字起こし" data-i18n-attrs="aria-label">
                 <ol id="transcript-utterances" class="transcript-utterances"></ol>
             </div>
             <footer class="transcript-footer">
-                <button type="button" id="transcript-previous" disabled>前の発言</button>
+                <button type="button" id="transcript-previous" disabled data-i18n>前の発言</button>
                 <span id="transcript-page" aria-live="polite"></span>
-                <button type="button" id="transcript-next" disabled>次の発言</button>
+                <button type="button" id="transcript-next" disabled data-i18n>次の発言</button>
             </footer>
         </div>
     </dialog>

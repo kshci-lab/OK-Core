@@ -1,3 +1,5 @@
+const okMapUi = window.okCoreLanguage;
+
 ﻿// 議論内省マップに関する処理プログラム
 let defaultOrganizational;
 let defaultRecordOrganizational;
@@ -234,9 +236,10 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
         sections.forEach((section) => {
             const heading = document.createElement('div');
             heading.className = 'organizational-tooltip-heading';
-            heading.textContent = section.heading;
+            okMapUi.bind(heading, section.heading);
             const body = document.createElement('div');
-            body.textContent = section.body;
+            if (section.body || !Array.isArray(tooltipData.sections)) body.textContent = section.body;
+            else okMapUi.bind(body, '未入力');
             this.tooltipEl.appendChild(heading);
             this.tooltipEl.appendChild(body);
         });
@@ -305,7 +308,7 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
     //エッジ編集できる場合の処理
     enableEditEdge() {
         // エッジを編集するときは，ノードの動きを止める
-        document.getElementById("organizational_startEditEdge").value="エッジ追加終了";
+        okMapUi.bind(document.getElementById("organizational_startEditEdge"), "エッジ追加終了", undefined, "value");
         this.nodes.update(this.nodes.map(n => {
             return { ...n, fixed: true };
         }));     
@@ -313,7 +316,7 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
 
     //エッジ編集できない場合の処理
     disableEditEdge() {
-        document.getElementById("organizational_startEditEdge").value="エッジ追加";
+        okMapUi.bind(document.getElementById("organizational_startEditEdge"), "エッジ追加", undefined, "value");
         // エッジの編集モードを抜けたときは，ノードの動きを再度始める（ただし，タグノードはFixedにしておく）
         this.edgeEditMode = false;
         this.nodes.update(this.nodes.map(n => {
@@ -652,7 +655,7 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
     }
 
     buildProducedKnowledgeTooltipData(nodeInfo){
-        const label = (value) => value == null || String(value).trim() === '' ? '未入力' : String(value).trim();
+        const label = (value) => value == null || String(value).trim() === '' ? '' : String(value).trim();
         return { sections: [
             { heading: 'When', body: label(nodeInfo.tacto_when) },
             { heading: 'What', body: label(nodeInfo.tacto_what) },
@@ -907,7 +910,7 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
         const clickedNodeId = params.nodes[0];
         if (clickedNodeId !== undefined) {
             // ユーザーに新しいラベルを尋ね、それをノードの中身に設定
-            const newLabel = prompt('新しいラベルを入力してください:', this.nodes.get(clickedNodeId).label.split('\n').join(''));
+            const newLabel = prompt(okMapUi.t('新しいラベルを入力してください:'), this.nodes.get(clickedNodeId).label.split('\n').join(''));
             // 編集したラベルを反映
             if (newLabel !== null) {
                 this.editNode(clickedNodeId, newLabel);
@@ -972,8 +975,8 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
                 processMenu.style.display = sourceNode
                     && ['experience', 'discussion'].includes(sourceNode.source_type)
                     && /^\d+$/.test(String(sourceNode.source_record_id || '')) ? '' : 'none';
-                processMenu.textContent = sourceNode && sourceNode.source_type === 'discussion'
-                    ? '議論の文字起こしを表示' : '思考過程表出化マップを表示';
+                okMapUi.bind(processMenu, sourceNode && sourceNode.source_type === 'discussion'
+                    ? '議論の文字起こしを表示' : '思考過程表出化マップを表示');
             }
             const pointerX = params.pointer.DOM.x;
             const pointerY = params.pointer.DOM.y;
@@ -1006,7 +1009,7 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
     show_select (){
         document.getElementById('t_Organizational_conmenu').style.display = "none";
         if(this.OntologyConnectNodeId.indexOf(this.selectId) !== -1){
-            alert('このノードにはすでに概念がつけられているため概念付けできません');
+            alert(okMapUi.t('このノードにはすでに概念がつけられているため概念付けできません'));
             return;
         }
         const labelselect = document.getElementById("labelselect");
@@ -1113,7 +1116,7 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
         }
 
         document.getElementById('t_Organizational_conmenu').style.display = "none";
-        if (!confirm('選択した組織知を削除していいですか')) {
+        if (!confirm(okMapUi.t('選択した組織知を削除していいですか'))) {
             return;
         }
 
@@ -1131,10 +1134,10 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
                 this.selectId = null;
                 this.selectedOrganizationalNode = null;
             } else {
-                alert((response && response.message) ? response.message : '組織知の削除に失敗しました');
+                alert(okMapUi.t(okMapUi.error(response && response.message, '組織知の削除に失敗しました')));
             }
         }).fail(() => {
-            alert('組織知の削除に失敗しました');
+            alert(okMapUi.t('組織知の削除に失敗しました'));
         });
     }
 
@@ -1167,7 +1170,7 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
         }
 
         if (typeof setLessonActionButton === 'function') {
-            setLessonActionButton('編集を保存', this.saveExperienceKnowledgeEdit.bind(this));
+            setLessonActionButton(okMapUi.t('編集を保存'), this.saveExperienceKnowledgeEdit.bind(this));
         }
     }
 
@@ -1177,7 +1180,7 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
             return;
         }
         if (typeof collectLessonFormData !== 'function') {
-            alert('編集フォームを読み込めませんでした。ページをリロードしてください。');
+            alert(okMapUi.t('編集フォームを読み込めませんでした。ページをリロードしてください。'));
             return;
         }
 
@@ -1209,12 +1212,12 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
                 });
                 this.nodes.update(updatedNode);
                 this.selectedOrganizationalNode = this.nodes.get(selectedNode.id);
-                alert('組織知を更新しました。');
+                alert(okMapUi.t('組織知を更新しました。'));
             } else {
-                alert((response && response.message) ? response.message : '組織知の更新に失敗しました');
+                alert(okMapUi.t(okMapUi.error(response && response.message, '組織知の更新に失敗しました')));
             }
         }).fail(() => {
-            alert('組織知の更新に失敗しました');
+            alert(okMapUi.t('組織知の更新に失敗しました'));
         });
     }
 
@@ -1643,10 +1646,10 @@ let organizational_list;
 let organizational_current_user_id = null;
 let organizational_request_version = 0;
 
-function setOrganizationalLoadStatus(message, isError) {
+function setOrganizationalLoadStatus(message, isError, values) {
     const status = document.getElementById('group_kf_status');
     if (!status) return;
-    status.textContent = message;
+    okMapUi.bind(status, message, values);
     status.classList.toggle('is-error', !!isError);
 }
 
@@ -1711,7 +1714,7 @@ const displayOrganizationalData = (mode, selected_group_id) => {
                 // プレースホルダ（デフォルトは何も選択されていない表示）
                 const placeholder = document.createElement('option');
                 placeholder.value = '';
-                placeholder.textContent = 'ー組織を選択ー';
+                okMapUi.bind(placeholder, 'ー組織を選択ー');
                 placeholder.disabled = true;
                 // selected_group_id が渡されていなければプレースホルダを選択状態にする
                 if (!effectiveSelectedGroupId) {
@@ -1759,8 +1762,8 @@ const displayOrganizationalData = (mode, selected_group_id) => {
             try{ defaultOrganizational.ownNetwork.redraw(); }catch(_){}
             const fragmentCount = (organizational_list_info.enode || []).length;
             setOrganizationalLoadStatus(effectiveSelectedGroupId
-                ? 'KF ' + fragmentCount + '件'
-                : '表示できる組織がありません。', false);
+                ? 'KF {count}件'
+                : '表示できる組織がありません。', false, { count: fragmentCount });
             // ユーザーごとのTriggerノードを表示
             // organizational_list_info.tnode.map((t) => {
             //     defaultOrganizational.addReloadTriggerNode(t.user_id, t.trigger_node_id, t.content, t.trigger_node_type);

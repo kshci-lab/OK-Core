@@ -385,11 +385,11 @@ $mysqli->close();
           <?php 
             $__sel = isset($__kfrag_raw['selected_contents']) ? trim((string)$__kfrag_raw['selected_contents']) : '';
             if ($__sel !== '') { ?>
-              <div class="selected-utterance"><?php echo htmlspecialchars($__selectedLabel, ENT_QUOTES, 'UTF-8'); ?>: <?php echo nl2br(htmlspecialchars($__sel, ENT_QUOTES, 'UTF-8')); ?></div>
+              <div class="selected-utterance"><span data-i18n><?php echo htmlspecialchars($__selectedLabel, ENT_QUOTES, 'UTF-8'); ?></span>: <?php echo nl2br(htmlspecialchars($__sel, ENT_QUOTES, 'UTF-8')); ?></div>
           <?php } ?>
-          <div class="qa-item"><div class="qa-q"><?php echo htmlspecialchars($__stage1Label, ENT_QUOTES, 'UTF-8'); ?></div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s1, ENT_QUOTES, 'UTF-8')); ?></div></div>
-          <div class="qa-item"><div class="qa-q">【活動文脈固有の振り返り】</div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s2, ENT_QUOTES, 'UTF-8')); ?></div></div>
-          <div class="qa-item"><div class="qa-q">【研究固有の振り返り】</div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s3, ENT_QUOTES, 'UTF-8')); ?></div></div>
+          <div class="qa-item"><div class="qa-q" data-i18n><?php echo htmlspecialchars($__stage1Label, ENT_QUOTES, 'UTF-8'); ?></div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s1, ENT_QUOTES, 'UTF-8')); ?></div></div>
+          <div class="qa-item"><div class="qa-q" data-i18n>【活動文脈固有の振り返り】</div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s2, ENT_QUOTES, 'UTF-8')); ?></div></div>
+          <div class="qa-item"><div class="qa-q" data-i18n>【研究固有の振り返り】</div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s3, ENT_QUOTES, 'UTF-8')); ?></div></div>
         </div>
         <div class="card-actions">
           <button type="button" class="detail-button">詳細▼</button>

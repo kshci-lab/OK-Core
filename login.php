@@ -51,25 +51,33 @@ $devLoginLabel = $errorMessage !== '' ? '開発用ログインに切り替える
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OK-Core Login</title>
-    <link rel="stylesheet" href="css/ok-core.css">
+    <link rel="stylesheet" href="css/ok-core.css?v=<?php echo (int)filemtime(__DIR__ . '/css/ok-core.css'); ?>">
+    <script src="js/ui-language.js?v=<?php echo (int)filemtime(__DIR__ . '/js/ui-language.js'); ?>"></script>
 </head>
 <body class="auth-page">
     <main class="auth-box">
         <h1>OK-Core</h1>
-        <p>Knowledge Fragment を扱うための入口です。</p>
+        <label class="language-control">
+                <span data-i18n>言語</span>
+                <select id="language-toggle">
+                    <option value="ja">日本語</option>
+                    <option value="en">English</option>
+                </select>
+            </label>
+        <p data-i18n>Knowledge Fragment を扱うための入口です。</p>
         <?php if ($errorMessage !== ''): ?>
-            <p>SSOログインに失敗しました。</p>
+            <p data-i18n>SSOログインに失敗しました。</p>
             <pre><?php echo htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8'); ?></pre>
-            <p style="margin-top: 0.75rem; color: #6b7280; font-size: 0.95rem;">
+            <p style="margin-top: 0.75rem; color: #6b7280; font-size: 0.95rem;" data-i18n>
                 ひとまず開発用ログインに切り替えて続けられます。
             </p>
         <?php endif; ?>
         <div class="auth-actions">
-            <a class="primary-link" href="<?php echo htmlspecialchars($ssoLoginUrl, ENT_QUOTES, 'UTF-8'); ?>">SSOログイン</a>
-            <a class="secondary-button" href="<?php echo htmlspecialchars($devLoginUrl, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($devLoginLabel, ENT_QUOTES, 'UTF-8'); ?></a>
+            <a class="primary-link" href="<?php echo htmlspecialchars($ssoLoginUrl, ENT_QUOTES, 'UTF-8'); ?>"><span data-i18n>SSOログイン</span></a>
+            <a class="secondary-button" href="<?php echo htmlspecialchars($devLoginUrl, ENT_QUOTES, 'UTF-8'); ?>"><span data-i18n><?php echo htmlspecialchars($devLoginLabel, ENT_QUOTES, 'UTF-8'); ?></span></a>
         </div>
         <p style="margin-top: 1rem; color: #6b7280; font-size: 0.95rem;">
-            現在の戻り先: <?php echo htmlspecialchars($resolvedClientUrl, ENT_QUOTES, 'UTF-8'); ?>
+            <span data-i18n>現在の戻り先:</span> <?php echo htmlspecialchars($resolvedClientUrl, ENT_QUOTES, 'UTF-8'); ?>
         </p>
     </main>
 </body>

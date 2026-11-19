@@ -1,5 +1,6 @@
 // forest-mrn: organizational map sub-tabs + "combination" overlay behaviors
 (function(){
+  const ui = window.okCoreLanguage;
   'use strict';
 
   function qs(sel, root){ return (root || document).querySelector(sel); }
@@ -145,7 +146,7 @@
         if(filterName === 'hide-organizational-knowledge'){
           var hidden = !!(displayFilterState[scope] && displayFilterState[scope].hideOrganizationalKnowledge);
           btn.classList.toggle('is-active', !hidden);
-          btn.textContent = '組織知';
+          ui.bind(btn, '組織知');
         }
       });
       group.addEventListener('click', function(e){
@@ -157,7 +158,7 @@
         displayFilterState[scope].hideOrganizationalKnowledge = !displayFilterState[scope].hideOrganizationalKnowledge;
         var hidden = !!displayFilterState[scope].hideOrganizationalKnowledge;
         btn.classList.toggle('is-active', !hidden);
-        btn.textContent = '組織知';
+        ui.bind(btn, '組織知');
         applySourceFilter(scope);
       }, false);
     });
@@ -324,8 +325,8 @@
     var reloadBtn = document.createElement('button');
     reloadBtn.type = 'button';
     reloadBtn.className = 'kfrag-reload-btn';
-    reloadBtn.setAttribute('aria-label', 'KF一覧を再読み込み');
-    reloadBtn.setAttribute('title', 'KF一覧を再読み込み');
+    ui.bind(reloadBtn, 'KF一覧を再読み込み', undefined, 'aria-label');
+    ui.bind(reloadBtn, 'KF一覧を再読み込み', undefined, 'title');
     reloadBtn.innerHTML = '<span aria-hidden="true">&#8635;</span>';
     zoomGroup.appendChild(reloadBtn);
     group.appendChild(zoomGroup);
@@ -334,7 +335,7 @@
     relationBtn.type = 'button';
     relationBtn.id = 'kfrag-toggle-relations';
     relationBtn.className = 'kfrag-action-btn kfrag-relation-toggle';
-    relationBtn.textContent = 'KFリンク';
+    ui.bind(relationBtn, 'KFリンク');
     group.appendChild(relationBtn);
 
     viewGroup.addEventListener('click', function(e){
@@ -478,14 +479,14 @@
 
       var del = document.createElement('div');
       del.id = 'kt-conmenu-delete';
-      del.textContent = '削除する';
+      ui.bind(del, '削除する');
       del.style.padding = '6px 10px';
       del.style.cursor = 'pointer';
       del.style.color = '#b30000';
 
       var cancel = document.createElement('div');
       cancel.id = 'kt-conmenu-cancel';
-      cancel.textContent = 'キャンセル';
+      ui.bind(cancel, 'キャンセル');
       cancel.style.padding = '6px 10px';
       cancel.style.cursor = 'pointer';
       cancel.style.color = '#333';
@@ -493,7 +494,7 @@
       menu.appendChild(del);
       var saveHistory = document.createElement('div');
       saveHistory.id = 'kt-conmenu-save-history';
-      saveHistory.textContent = '履歴を保存';
+      ui.bind(saveHistory, '履歴を保存');
       saveHistory.style.padding = '6px 10px';
       saveHistory.style.cursor = 'pointer';
       menu.appendChild(saveHistory);
@@ -549,24 +550,24 @@
           var idAttr = target.getAttribute('data-node-id');
           var id = idAttr ? parseInt(idAttr, 10) : NaN;
           if(!id || isNaN(id) || id <= 0){
-            if(window.alert) alert('このノードは削除できません（ID不正）');
+            if(window.alert) alert(ui.t('このノードは削除できません（ID不正）'));
             hide();
             return;
           }
           // prevent deleting the 3 guaranteed top nodes (common convention)
           if(id === 1 || id === 2 || id === 3){
-            if(window.alert) alert('トップレベルのノードは削除できません');
+            if(window.alert) alert(ui.t('トップレベルのノードは削除できません'));
             hide();
             return;
           }
-          if(window.confirm && window.confirm('本当にこのノードを削除しますか？') !== true){
+          if(window.confirm && window.confirm(ui.t('本当にこのノードを削除しますか？')) !== true){
             hide();
             return;
           }
 
           window._ktNodeDeleteInProgress = window._ktNodeDeleteInProgress || {};
           if(window._ktNodeDeleteInProgress[id]){
-            if(window.alert) alert('削除処理が進行中です');
+            if(window.alert) alert(ui.t('削除処理が進行中です'));
             hide();
             return;
           }
@@ -587,13 +588,13 @@
                 if(r && r.status === 'ok'){
                   loadKnowledgeTree();
                 } else {
-                  if(window.alert) alert('削除に失敗しました' + (r && r.message ? (': ' + r.message) : ''));
+                  if(window.alert) alert(ui.t(ui.error(r && r.message, '削除に失敗しました')));
                 }
               } else {
-                if(window.alert) alert('通信エラーで削除できませんでした');
+                if(window.alert) alert(ui.t('通信エラーで削除できませんでした'));
               }
             }catch(_){
-              if(window.alert) alert('削除応答の処理でエラーが発生しました');
+              if(window.alert) alert(ui.t('削除応答の処理でエラーが発生しました'));
             }
           };
           xhr.send(fd);
@@ -623,7 +624,7 @@
           saveHistoryBtn.__saving = false;
           var result = null;
           try{ result = JSON.parse(xhr.responseText || '{}'); }catch(_){ }
-          if(window.alert) alert(result && result.message ? result.message : '履歴を保存できませんでした');
+          if(window.alert) alert(ui.t(ui.error(result && result.message, '履歴を保存できませんでした')));
         }
         xhr.onload = finish;
         xhr.onerror = finish;
@@ -643,7 +644,7 @@
     btn.__bound = true;
     btn.addEventListener('click', function(){
       var title = '';
-      try{ title = window.prompt ? window.prompt('追加する項目名を入力してください') : ''; }catch(_){ title = ''; }
+      try{ title = window.prompt ? window.prompt(ui.t('追加する項目名を入力してください')) : ''; }catch(_){ title = ''; }
       if(title === null) return;
       title = String(title || '').trim();
       if(!title) return;
@@ -669,13 +670,13 @@
       xhr.onreadystatechange = function(){
         if(xhr.readyState !== 4) return;
         if(xhr.status !== 200){
-          try{ if(window.alert) alert('項目の作成に失敗しました'); }catch(_){ }
+          try{ if(window.alert) alert(ui.t('項目の作成に失敗しました')); }catch(_){ }
           return;
         }
         var res = null;
         try{ res = JSON.parse(xhr.responseText || '{}'); }catch(_){ res = null; }
         if(!res || res.status !== 'ok'){
-          try{ if(window.alert) alert((res && res.message) ? res.message : '項目の作成に失敗しました'); }catch(_){ }
+          try{ if(window.alert) alert(ui.t(ui.error(res && res.message, '項目の作成に失敗しました'))); }catch(_){ }
           return;
         }
         loadKnowledgeTree();
@@ -762,7 +763,7 @@
       if(xhr.readyState !== 4) return;
       if(requestVersion !== fragmentReloadVersion || getSelectedGroupId() !== gid){ complete(false); return; }
       if(xhr.status !== 200){
-        replaceFragmentListHTML(workspace, '<div class="knowledge-fragment-list"><div class="no-fragment-note">KF一覧を読み込めませんでした。</div></div>');
+        replaceFragmentListHTML(workspace, '<div class="knowledge-fragment-list"><div class="no-fragment-note" data-i18n>KF一覧を読み込めませんでした。</div></div>');
         complete(false);
         return;
       }
@@ -1102,10 +1103,10 @@
           ind = document.createElement('div');
           ind.className = 'fragment-discussed-indicator';
           ind.setAttribute('aria-hidden', 'true');
-          ind.textContent = '議論中';
+          ui.bind(ind, '議論中');
           w.appendChild(ind);
         } else {
-          ind.textContent = '議論中';
+          ui.bind(ind, '議論中');
         }
       } else {
         if(ind && ind.parentNode){ ind.parentNode.removeChild(ind); }
@@ -1228,7 +1229,7 @@
     if(refs.length === 0){
       var empty = document.createElement('div');
       empty.className = 'selected-empty';
-      empty.textContent = window.activeKnowledgeNoLinked ? '--' : '未選択';
+      ui.bind(empty, window.activeKnowledgeNoLinked ? '--' : '未選択');
       box.appendChild(empty);
       return;
     }
@@ -1244,7 +1245,7 @@
       if(idx > 0){
         var rm = document.createElement('span');
         rm.className = 'remove-btn';
-        rm.title = '選択解除';
+        ui.bind(rm, '選択解除', undefined, 'title');
         rm.textContent = '×';
         item.appendChild(rm);
       }
@@ -1864,7 +1865,7 @@
       var d = qs('.card-detail', card);
       if(d){ d.setAttribute('aria-hidden','true'); d.style.display = 'none'; }
       var detailBtn = qs('.detail-button', card);
-      if(detailBtn){ detailBtn.textContent = '詳細▼'; }
+      if(detailBtn){ ui.bind(detailBtn, '詳細▼'); }
     });
 
     bindFragmentReorder(workspace);
@@ -1884,7 +1885,7 @@
         var open = (detail.getAttribute('aria-hidden') !== 'false');
         detail.setAttribute('aria-hidden', open ? 'false' : 'true');
         detail.style.display = open ? 'block' : 'none';
-        btn.textContent = open ? '▲閉じる' : '詳細▼';
+        ui.bind(btn, open ? '▲閉じる' : '詳細▼');
         return;
       }
 
@@ -2056,10 +2057,10 @@
     loadKnowledgeTree.requestVersion = (loadKnowledgeTree.requestVersion || 0) + 1;
     var requestVersion = loadKnowledgeTree.requestVersion;
     if(!gid){
-      el.textContent = '表示できる組織がありません。';
+      ui.bind(el, '表示できる組織がありません。');
       return;
     }
-    el.textContent = '読み込み中...';
+    ui.bind(el, '読み込み中...');
     var url = 'php/get_knowledge_tree.php';
     url += '?group_id=' + encodeURIComponent(gid);
 
@@ -2069,19 +2070,24 @@
       if(xhr.readyState !== 4) return;
       if(requestVersion !== loadKnowledgeTree.requestVersion || String(getSelectedGroupId()) !== String(gid)) return;
       if(xhr.status !== 200){
-        el.textContent = '読み込みに失敗しました';
+        ui.bind(el, '読み込みに失敗しました');
         return;
       }
       var data = null;
       try{ data = JSON.parse(xhr.responseText || '{}'); }catch(e){ data = null; }
       if(!data || data.status !== 'ok' || !Array.isArray(data.nodes)){
-        el.textContent = 'データ形式が不正です';
+        ui.bind(el, 'データ形式が不正です');
         return;
       }
       try{ syncAreaSelectFromRoots(data.nodes); }catch(_){ }
       renderKnowledgeTree(el, data.nodes);
     };
     xhr.send(null);
+  }
+
+  function setCategoryLabel(element, title){
+    if(['知識関連', '研究方略関連', 'その他'].includes(title)) ui.bind(element, title);
+    else element.textContent = title;
   }
 
   function syncAreaSelectFromRoots(nodes){
@@ -2107,7 +2113,8 @@
       if(!r) return;
       var opt = document.createElement('option');
       opt.value = String(r.node_id || '');
-      opt.textContent = String(r.node_title || '');
+      opt.setAttribute('data-category-title', String(r.node_title || ''));
+      setCategoryLabel(opt, opt.getAttribute('data-category-title'));
       sel.appendChild(opt);
     });
     if(sel.options.length === 0) return;
@@ -2122,7 +2129,7 @@
       // try match by title (old behavior)
       if(!restored){
         for(var j=0;j<sel.options.length;j++){
-          if(String(sel.options[j].textContent) === String(prev)){ sel.selectedIndex = j; restored = true; break; }
+          if(sel.options[j].getAttribute('data-category-title') === String(prev)){ sel.selectedIndex = j; restored = true; break; }
         }
       }
     }
@@ -2144,7 +2151,7 @@
       var lines = [];
       fields.forEach(function(pair){
         var body = pair[1] != null ? String(pair[1]).trim() : '';
-        if(body !== '') lines.push('【' + pair[0] + '】\n' + body);
+        if(body !== '') lines.push('【' + ui.t(pair[0]) + '】\n' + body);
       });
       return lines.join('\n\n');
     }
@@ -2174,12 +2181,12 @@
       toggleBtn.type = 'button';
       toggleBtn.className = 'kt-comment-toggle';
       toggleBtn.setAttribute('aria-expanded', 'false');
-      toggleBtn.textContent = '知の内容を表示';
+      ui.bind(toggleBtn, '知の内容を表示');
 
       var c = document.createElement('div');
       c.className = 'kt-comment';
       c.hidden = true;
-      c.textContent = structureText;
+      ui.bind(c, () => getKnowledgeStructureFromNodeEl(nodeEl));
 
       var childrenEl = qs(':scope > .kt-children', nodeEl);
       var updatedEl = qs(':scope > .kt-updated', nodeEl);
@@ -2207,11 +2214,13 @@
       var s = String(ts).trim();
       var m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
       if(m){
+        if(ui.isEnglish()) return m[1] + '-' + m[2] + '-' + m[3] + ' ' + m[4] + ':' + m[5];
         return m[1] + '年' + m[2] + '月' + m[3] + '日 ' + m[4] + ':' + m[5];
       }
       // Fallback: try Date parse
       var d = new Date(s);
       if(!isNaN(d.getTime())){
+        if(ui.isEnglish()) return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
         return d.getFullYear() + '年' + pad2(d.getMonth()+1) + '月' + pad2(d.getDate()) + '日 ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
       }
       return s;
@@ -2300,15 +2309,17 @@
       } else {
         titleSpan.className = 'kt-node-title';
       }
-      titleSpan.textContent = (n.node_title != null ? String(n.node_title) : '(no title)');
+      var nodeTitle = n.node_title != null ? String(n.node_title) : '(no title)';
+      if(node.classList.contains('kt-root')) setCategoryLabel(titleSpan, nodeTitle);
+      else titleSpan.textContent = nodeTitle;
       node.appendChild(titleSpan);
 
       if((kfragId !== null && kfragId !== '' && typeof kfragId !== 'undefined') || sourceTypes.length > 0){
         var detailBtn = document.createElement('button');
         detailBtn.type = 'button';
         detailBtn.className = 'kt-detail-button';
-        detailBtn.textContent = '詳細';
-        detailBtn.setAttribute('aria-label', '算出した知の詳細を表示');
+        ui.bind(detailBtn, '詳細');
+        ui.bind(detailBtn, '算出した知の詳細を表示', undefined, 'aria-label');
         node.appendChild(detailBtn);
       }
 
@@ -2321,13 +2332,13 @@
         up.className = 'kt-root-move-btn kt-move-up';
         up.textContent = '▲';
         up.setAttribute('data-dir','up');
-        up.setAttribute('aria-label','上へ移動');
+        ui.bind(up, '上へ移動', undefined, 'aria-label');
         var dn = document.createElement('button');
         dn.type = 'button';
         dn.className = 'kt-root-move-btn kt-move-down';
         dn.textContent = '▼';
         dn.setAttribute('data-dir','down');
-        dn.setAttribute('aria-label','下へ移動');
+        ui.bind(dn, '下へ移動', undefined, 'aria-label');
         mv.appendChild(up);
         mv.appendChild(dn);
         node.appendChild(mv);
@@ -2343,11 +2354,11 @@
       if(n.updated_at != null && String(n.updated_at).trim() !== ''){
         var u = document.createElement('div');
         u.className = 'kt-updated';
-        var txt = '更新日時: ' + formatTs(n.updated_at);
-        if(n.updated_by_name != null && String(n.updated_by_name).trim() !== ''){
-          txt += ' 更新ユーザー: ' + String(n.updated_by_name);
-        }
-        u.textContent = txt;
+        ui.bind(u, () => {
+          var text = ui.t('更新日時') + ': ' + formatTs(n.updated_at);
+          return n.updated_by_name != null && String(n.updated_by_name).trim() !== ''
+            ? text + ' · ' + ui.t('更新ユーザー') + ': ' + n.updated_by_name : text;
+        });
         node.appendChild(u);
       }
 
@@ -2391,13 +2402,13 @@
 
       var title = document.createElement('div');
       title.id = 'knowledge-detail-overlay-title';
-      title.textContent = '算出した知の詳細';
+      ui.bind(title, '算出した知の詳細');
 
       var close = document.createElement('button');
       close.type = 'button';
       close.id = 'knowledge-detail-overlay-close';
       close.textContent = '×';
-      close.setAttribute('aria-label', '閉じる');
+      ui.bind(close, '閉じる', undefined, 'aria-label');
       close.addEventListener('click', function(){
         overlay.style.display = 'none';
         overlay.setAttribute('aria-hidden', 'true');
@@ -2436,7 +2447,7 @@
 
       overlay.style.display = 'flex';
       overlay.setAttribute('aria-hidden', 'false');
-      content.innerHTML = '<div class="knowledge-detail-loading">読み込み中...</div>';
+      content.innerHTML = '<div class="knowledge-detail-loading" data-i18n>読み込み中...</div>';
 
       $.ajax({
         url: 'php/get_knowledge_fragment_detail.php',
@@ -2458,7 +2469,7 @@
         }
         renderKnowledgeEditPanel(content, nodeEl, title, fragmentIds);
         var body = document.createElement('div');
-        body.innerHTML = html || '<div class="knowledge-detail-empty">詳細情報がありません。</div>';
+        body.innerHTML = html || '<div class="knowledge-detail-empty" data-i18n>詳細情報がありません。</div>';
         content.appendChild(body);
       }).fail(function(xhr){
         if(requestVersion !== knowledgeDetailRequestVersion || getSelectedGroupId() !== groupId) return;
@@ -2472,7 +2483,7 @@
         content.innerHTML = '<div class="knowledge-detail-error"></div>';
         renderKnowledgeEditPanel(content, nodeEl, title, fragmentIds);
         var err = qs('.knowledge-detail-error', content);
-        if(err) err.textContent = message;
+        if(err) ui.bind(err, message);
       });
     }
 
@@ -2486,7 +2497,7 @@
       var toggleBtn = document.createElement('button');
       toggleBtn.type = 'button';
       toggleBtn.className = 'knowledge-detail-edit-toggle';
-      toggleBtn.textContent = '編集';
+      ui.bind(toggleBtn, '編集');
       actionsBar.appendChild(toggleBtn);
 
       var panel = document.createElement('form');
@@ -2496,7 +2507,7 @@
 
       var titleLabel = document.createElement('label');
       titleLabel.className = 'knowledge-edit-label';
-      titleLabel.textContent = 'タイトル';
+      titleLabel.appendChild(ui.bind(document.createElement('span'), 'タイトル'));
       var titleInput = document.createElement('textarea');
       titleInput.className = 'knowledge-edit-control knowledge-edit-title';
       titleInput.rows = 2;
@@ -2507,7 +2518,7 @@
       function makeEditTextArea(labelText, value, rows){
         var label = document.createElement('label');
         label.className = 'knowledge-edit-label';
-        label.textContent = labelText;
+        label.appendChild(ui.bind(document.createElement('span'), labelText));
         var input = document.createElement('textarea');
         input.className = 'knowledge-edit-control';
         input.rows = rows || 2;
@@ -2522,7 +2533,7 @@
       var basisField = makeEditTextArea('組織知化の根拠', nodeEl.getAttribute('data-organizational-basis') || '', 3);
       var commentLabel = document.createElement('label');
       commentLabel.className = 'knowledge-edit-label';
-      commentLabel.textContent = '補足コメント';
+      commentLabel.appendChild(ui.bind(document.createElement('span'), '補足コメント'));
       var commentInput = document.createElement('textarea');
       commentInput.className = 'knowledge-edit-control';
       commentInput.rows = 3;
@@ -2533,7 +2544,7 @@
       linkRow.className = 'knowledge-edit-link-row';
       var linkLabel = document.createElement('label');
       linkLabel.className = 'knowledge-edit-label knowledge-edit-link-label';
-      linkLabel.textContent = '接続KF';
+      linkLabel.appendChild(ui.bind(document.createElement('span'), '接続KF'));
       var linkInput = document.createElement('input');
       linkInput.type = 'text';
       linkInput.className = 'knowledge-edit-control knowledge-edit-links';
@@ -2544,7 +2555,7 @@
       var reflectBtn = document.createElement('button');
       reflectBtn.type = 'button';
       reflectBtn.className = 'knowledge-edit-reflect';
-      reflectBtn.textContent = '現在選択中のKFを反映';
+      ui.bind(reflectBtn, '現在選択中のKFを反映');
       reflectBtn.addEventListener('click', function(){
         linkInput.value = getSelectedFragmentRefs().join(',');
       }, false);
@@ -2558,11 +2569,11 @@
       var cancelBtn = document.createElement('button');
       cancelBtn.type = 'button';
       cancelBtn.className = 'knowledge-edit-reflect';
-      cancelBtn.textContent = '閉じる';
+      ui.bind(cancelBtn, '閉じる');
       var saveBtn = document.createElement('button');
       saveBtn.type = 'submit';
       saveBtn.className = 'knowledge-edit-save';
-      saveBtn.textContent = '保存';
+      ui.bind(saveBtn, '保存');
       actions.appendChild(feedback);
       actions.appendChild(cancelBtn);
       actions.appendChild(saveBtn);
@@ -2596,15 +2607,15 @@
         var rawRefs = String(linkInput.value || '').split(',').map(function(ref){ return ref.trim(); }).filter(Boolean);
         var refs = rawRefs.map(function(ref){ return /^\d+$/.test(ref) ? 'experience:' + ref : ref; });
         if(refs.some(function(ref){ return !/^(experience|discussion):[1-9]\d*$/.test(ref); })){
-          feedback.textContent = '接続KFはexperience:IDまたはdiscussion:IDで指定してください';
+          ui.bind(feedback, '接続KFはexperience:IDまたはdiscussion:IDで指定してください');
           return;
         }
         var ids = refs.filter(function(ref){ return ref.indexOf('experience:') === 0; }).map(function(ref){ return ref.split(':')[1]; }).join(',');
         if(!newTitle){
-          feedback.textContent = 'タイトルを入力してください';
+          ui.bind(feedback, 'タイトルを入力してください');
           return;
         }
-        feedback.textContent = '保存中...';
+        ui.bind(feedback, '保存中...');
         saveBtn.disabled = true;
 
         var fd = new FormData();
@@ -2627,16 +2638,16 @@
           if(xhr.readyState !== 4) return;
           saveBtn.disabled = false;
           if(xhr.status !== 200){
-            feedback.textContent = '保存に失敗しました';
+            ui.bind(feedback, '保存に失敗しました');
             return;
           }
           var res = null;
           try{ res = JSON.parse(xhr.responseText || '{}'); }catch(_){ res = null; }
           if(!res || res.status !== 'ok'){
-            feedback.textContent = (res && res.message) ? res.message : '保存に失敗しました';
+            ui.bind(feedback, () => ui.t(ui.error(res && res.message, '保存に失敗しました')));
             return;
           }
-          feedback.textContent = '保存しました';
+          ui.bind(feedback, '保存しました');
           try{ nodeEl.setAttribute('data-node-title', newTitle); }catch(_){ }
           try{ nodeEl.setAttribute('data-tacto-when', newWhen); }catch(_){ }
           try{ nodeEl.setAttribute('data-tacto-what', newWhat); }catch(_){ }
@@ -2740,7 +2751,7 @@
           if(!commentEl) return;
           var isOpen = commentToggle.getAttribute('aria-expanded') === 'true';
           commentToggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-          commentToggle.textContent = isOpen ? '知の内容を表示' : '知の内容を閉じる';
+          ui.bind(commentToggle, isOpen ? '知の内容を表示' : '知の内容を閉じる');
           commentEl.hidden = isOpen;
           return;
         }
@@ -2764,17 +2775,17 @@
           xhrM.onreadystatechange = function(){
             if(xhrM.readyState !== 4) return;
             if(xhrM.status !== 200){
-              try{ if(window.alert) alert('順番の更新に失敗しました'); }catch(_){ }
+              try{ if(window.alert) alert(ui.t('順番の更新に失敗しました')); }catch(_){ }
               return;
             }
             try{
               var r = JSON.parse(xhrM.responseText || '{}');
               if(!r || r.status !== 'ok'){
-                try{ if(window.alert) alert((r && r.message) ? r.message : '順番の更新に失敗しました'); }catch(_){ }
+                try{ if(window.alert) alert(ui.t(ui.error(r && r.message, '順番の更新に失敗しました'))); }catch(_){ }
                 return;
               }
             }catch(_){
-              try{ if(window.alert) alert('順番更新の応答処理でエラーが発生しました'); }catch(_){ }
+              try{ if(window.alert) alert(ui.t('順番更新の応答処理でエラーが発生しました')); }catch(_){ }
               return;
             }
             loadKnowledgeTree();
@@ -2872,7 +2883,7 @@
         var nodeId = nodeEl.getAttribute('data-node-id');
         if(!nodeId) return;
 
-        var oldText = span.textContent || '';
+        var oldText = nodeEl.getAttribute('data-node-title') || span.textContent || '';
         span.classList.add('editing');
         span.textContent = '';
 
@@ -2887,7 +2898,9 @@
         function commit(txt){
           finished = true;
           span.classList.remove('editing');
-          span.textContent = txt;
+          nodeEl.setAttribute('data-node-title', txt);
+          if(nodeEl.classList.contains('kt-root')) setCategoryLabel(span, txt);
+          else span.textContent = txt;
         }
 
         function saveIfChanged(newVal){
@@ -2903,16 +2916,16 @@
           xhr.onreadystatechange = function(){
             if(xhr.readyState !== 4) return;
             if(xhr.status !== 200){
-              try{ if(window.alert) alert('タイトルの保存に失敗しました'); }catch(_){ }
+              try{ if(window.alert) alert(ui.t('タイトルの保存に失敗しました')); }catch(_){ }
               return;
             }
             try{
               var res = JSON.parse(xhr.responseText || '{}');
               if(!res || res.status !== 'ok'){
-                try{ if(window.alert) alert('タイトルの保存に失敗しました'); }catch(_){ }
+                try{ if(window.alert) alert(ui.t('タイトルの保存に失敗しました')); }catch(_){ }
               }
             }catch(_){
-              try{ if(window.alert) alert('タイトル保存の応答処理でエラーが発生しました'); }catch(_){ }
+              try{ if(window.alert) alert(ui.t('タイトル保存の応答処理でエラーが発生しました')); }catch(_){ }
             }
           };
           xhr.send(fd);
@@ -2949,7 +2962,7 @@
     var s = (typeof window.activeKnowledgeFragmentDiscussed !== 'undefined' && window.activeKnowledgeFragmentDiscussed !== null)
       ? String(window.activeKnowledgeFragmentDiscussed).trim()
       : '';
-    btn.textContent = discussedLabel(s);
+    ui.bind(btn, discussedLabel(s));
     btn.disabled = (getActiveFragmentId() === null);
   }
 
@@ -2960,7 +2973,7 @@
         var refs = getSelectedFragmentRefs();
         var ids = refs.map(function(ref){ return ref.split(':')[1]; });
         if(refs.length === 0){
-          if(window.alert) alert('議論対象とするフラグメントを選択してください');
+          if(window.alert) alert(ui.t('議論対象とするフラグメントを選択してください'));
           return;
         }
         var cur = (typeof window.activeKnowledgeFragmentDiscussed !== 'undefined' && window.activeKnowledgeFragmentDiscussed !== null)
@@ -2995,7 +3008,7 @@
             pending--;
             if(pending === 0){
               if(anyFail){
-                if(window.alert) alert('一部のフラグメントの更新に失敗しました');
+                if(window.alert) alert(ui.t('一部のフラグメントの更新に失敗しました'));
               }
               window.activeKnowledgeFragmentDiscussed = next;
               // When discussion starts, freeze the current selection set.
@@ -3063,10 +3076,10 @@
       var organizational_basis = organizationalBasis ? organizationalBasis.value.trim() : '';
       var node_comment = comment ? comment.value.trim() : '';
       if(!node_title){
-        if(feedback) feedback.textContent = '組織知の要約を入力してください。';
+        if(feedback) ui.bind(feedback, '組織知の要約を入力してください。');
         return;
       }
-      if(feedback) feedback.textContent = '登録中...';
+      if(feedback) ui.bind(feedback, '登録中...');
 
       var fd = new FormData();
       if(parent_id) fd.append('parent_id', parent_id);
@@ -3093,13 +3106,13 @@
       xhr.onreadystatechange = function(){
         if(xhr.readyState !== 4) return;
         if(xhr.status !== 200){
-          if(feedback) feedback.textContent = '登録に失敗しました。';
+          if(feedback) ui.bind(feedback, '登録に失敗しました。');
           return;
         }
         var data = null;
         try{ data = JSON.parse(xhr.responseText || '{}'); }catch(e){ data = null; }
         if(!data || data.status !== 'ok'){
-          if(feedback) feedback.textContent = (data && data.message) ? data.message : '登録に失敗しました。';
+          if(feedback) ui.bind(feedback, () => ui.t(ui.error(data && data.message, '登録に失敗しました。')));
           return;
         }
         if(content) content.value = '';
@@ -3108,7 +3121,7 @@
         if(tactoWhy) tactoWhy.value = '';
         if(organizationalBasis) organizationalBasis.value = '';
         if(comment) comment.value = '';
-        if(feedback) feedback.textContent = '登録しました。';
+        if(feedback) ui.bind(feedback, '登録しました。');
         loadKnowledgeTree();
       };
       xhr.send(fd);
@@ -3130,7 +3143,7 @@
       var ids = getSelectedFragmentSourceIds();
       var sourceType = getActiveFragmentSourceType() || 'experience';
       if(ids.length === 0){
-        if(window.alert) alert('議論対象とするフラグメントを選択してください');
+        if(window.alert) alert(ui.t('議論対象とするフラグメントを選択してください'));
         return;
       }
       var fd = new FormData();
@@ -3144,13 +3157,13 @@
       xhr.onreadystatechange = function(){
         if(xhr.readyState !== 4) return;
         if(xhr.status !== 200){
-          if(window.alert) alert('通信エラーにより投稿できませんでした。');
+          if(window.alert) alert(ui.t('通信エラーにより投稿できませんでした。'));
           return;
         }
         var data = null;
         try{ data = JSON.parse(xhr.responseText || '{}'); }catch(e){ data = null; }
         if(!data || data.status !== 'ok'){
-          if(window.alert) alert('投稿の保存に失敗しました。');
+          if(window.alert) alert(ui.t('投稿の保存に失敗しました。'));
           return;
         }
         input.value = '';
@@ -3194,14 +3207,14 @@
       list.innerHTML = '';
       var ph = document.createElement('div');
       ph.className = 'discussion-placeholder';
-      ph.textContent = window.activeKnowledgeNoLinked ? 'この組織知に紐づく KF はありません。' : '議論対象とするフラグメントを選択してください';
+      ui.bind(ph, window.activeKnowledgeNoLinked ? 'この組織知に紐づく KF はありません。' : '議論対象とするフラグメントを選択してください');
       list.appendChild(ph);
       if(form) form.style.display = 'none';
       updateDiscussedButton();
       return;
     }
     if(form) form.style.display = 'block';
-    if(!options.silent && !list.hasAttribute('data-discussion-selection')) list.textContent = '読み込み中...';
+    if(!options.silent && !list.hasAttribute('data-discussion-selection')) ui.bind(list, '読み込み中...');
     if(refreshButton) refreshButton.disabled = true;
 
     var url = 'php/get_discussion_history.php?limit=200';
@@ -3216,13 +3229,13 @@
       if(refreshButton) refreshButton.disabled = false;
       if(requestSerial !== _discussionRequestSerial || selectionKey !== [getSelectedGroupId(), getSelectedFragmentRefs().join(',')].join(':')) return;
       if(xhr.status !== 200){
-        if(!options.silent) list.textContent = '読み込みに失敗しました';
+        if(!options.silent) ui.bind(list, '読み込みに失敗しました');
         return;
       }
       var data = null;
       try{ data = JSON.parse(xhr.responseText || '{}'); }catch(e){ data = null; }
       if(!data || data.status !== 'ok' || !Array.isArray(data.items)){
-        if(!options.silent) list.textContent = 'データ形式が不正です';
+        if(!options.silent) ui.bind(list, 'データ形式が不正です');
         return;
       }
       var signature = JSON.stringify(data.items);
@@ -3235,7 +3248,7 @@
       if(data.items.length === 0){
         var empty2 = document.createElement('div');
         empty2.className = 'discussion-placeholder';
-        empty2.textContent = '投稿はまだありません。';
+        ui.bind(empty2, '投稿はまだありません。');
         list.appendChild(empty2);
         return;
       }
@@ -3245,7 +3258,7 @@
         try{ card.setAttribute('data-discussion-id', it.discussion_history_id || ''); }catch(_){ }
         var a = document.createElement('div');
         a.className = 'message-author';
-        a.textContent = (it.user_name ? it.user_name : ('user ' + it.user_id)) + ' さん';
+        ui.bind(a, () => (it.user_name || ('user ' + it.user_id)) + ui.t(' さん'));
         var b = document.createElement('div');
         b.className = 'message-body';
         b.textContent = it.content || '';
