@@ -159,8 +159,10 @@ function discussion_transcript_read(mysqli $db, string $sourceId, ?string $sessi
             if ($id === '') { $unassignedCount++; continue; }
             $key = 'session:' . $id;
             if (!isset($sessions[$key])) {
+                $title = trim((string)$row['session_title']) ?: trim((string)$row['source_name']);
                 $sessions[$key] = ['session_id' => $id,
-                    'title' => trim((string)$row['session_title']) ?: (trim((string)$row['source_name']) ?: 'セッション ' . $id),
+                    'title' => $title ?: 'セッション ' . $id,
+                    'title_is_fallback' => !$title,
                     'started_at' => $row['started_at'], 'ended_at' => $row['ended_at'], 'linked_count' => 0];
             }
             $sessions[$key]['linked_count']++;
@@ -194,7 +196,7 @@ function discussion_transcript_read(mysqli $db, string $sourceId, ?string $sessi
         $utterances = discussion_transcript_rows($db,
             "SELECT u.discussion_utterance_id, u.utterance_text, $time AS uttered_at,
                     COALESCE(NULLIF(u.speaker_name, ''), NULLIF(p.display_name, ''),
-                             NULLIF(m.display_name, ''), '話者不明') AS speaker_name
+                             NULLIF(m.display_name, '')) AS speaker_name
                FROM discussion_utterances u
                LEFT JOIN discussion_participants p ON p.room_id = u.room_id AND p.user_id = u.user_id
                LEFT JOIN shimaoka_user_mappings m ON m.shimaoka_user_id = u.user_id
@@ -203,6 +205,8 @@ function discussion_transcript_read(mysqli $db, string $sourceId, ?string $sessi
         foreach ($utterances as &$row) {
             $row['discussion_utterance_id'] = (string)$row['discussion_utterance_id'];
             $row['is_linked'] = isset($linkedIds[$row['discussion_utterance_id']]);
+            $row['speaker_name_is_fallback'] = $row['speaker_name'] === null;
+            $row['speaker_name'] = $row['speaker_name'] ?? '話者不明';
         }
         unset($row);
         return ['source_kf_id' => $sourceId, 'title' => (string)$fragment['title'],

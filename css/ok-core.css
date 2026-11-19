@@ -72,6 +72,22 @@ body.ok-core-app:has(#org-tabpanel-combination:not([hidden])) {
     flex-shrink: 0;
 }
 
+.language-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+}
+
+.language-control select {
+    padding: 5px 8px;
+    border: 1px solid var(--ok-border);
+    border-radius: 6px;
+    color: var(--ok-text);
+    background: var(--ok-panel);
+    font: inherit;
+}
+
 .session-user {
     max-width: 220px;
     overflow: hidden;
@@ -514,6 +530,10 @@ body.ok-core-app:has(#org-tabpanel-cooperation:not([hidden])) .ok-main {
     .toolbar-band {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .session-block {
+        flex-wrap: wrap;
     }
 
     .session-block,

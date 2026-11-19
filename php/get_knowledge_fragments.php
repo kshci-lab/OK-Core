@@ -253,25 +253,25 @@ if (!empty($__kfrag_list) && isset($mysqli) && $mysqli instanceof mysqli) {
       if($sourceType === 'experience' && $sourceId>0){ echo ' data-ext-id="'.$sourceId.'"'; }
       if($sourceId>0){ echo ' data-source-id="'.$sourceId.'"'; }
     ?>>
-        <div class="card-title"><?php echo htmlspecialchars($__uname, ENT_QUOTES, 'UTF-8'); ?> さん</div>
+        <div class="card-title"><?php echo htmlspecialchars($__uname, ENT_QUOTES, 'UTF-8'); ?><span data-i18n=" さん"> さん</span></div>
         <div class="card-body"><?php echo nl2br(htmlspecialchars($__tmp, ENT_QUOTES, 'UTF-8')); ?></div>
         <div class="card-detail" aria-hidden="true">
           <?php 
             $__sel = is_array($__kfrag_raw) && isset($__kfrag_raw['selected_contents']) ? trim((string)$__kfrag_raw['selected_contents']) : '';
             if ($__sel !== '') { ?>
-              <div class="selected-utterance"><?php echo htmlspecialchars($__selectedLabel, ENT_QUOTES, 'UTF-8'); ?>: <?php echo nl2br(htmlspecialchars($__sel, ENT_QUOTES, 'UTF-8')); ?></div>
+              <div class="selected-utterance"><span data-i18n><?php echo htmlspecialchars($__selectedLabel, ENT_QUOTES, 'UTF-8'); ?></span>: <?php echo nl2br(htmlspecialchars($__sel, ENT_QUOTES, 'UTF-8')); ?></div>
           <?php } ?>
-          <div class="qa-item"><div class="qa-q"><?php echo htmlspecialchars($__stage1Label, ENT_QUOTES, 'UTF-8'); ?></div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s1, ENT_QUOTES, 'UTF-8')); ?></div></div>
-          <div class="qa-item"><div class="qa-q">【活動文脈固有の振り返り】</div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s2, ENT_QUOTES, 'UTF-8')); ?></div></div>
-          <div class="qa-item"><div class="qa-q">【研究固有の振り返り】</div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s3, ENT_QUOTES, 'UTF-8')); ?></div></div>
+          <div class="qa-item"><div class="qa-q" data-i18n><?php echo htmlspecialchars($__stage1Label, ENT_QUOTES, 'UTF-8'); ?></div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s1, ENT_QUOTES, 'UTF-8')); ?></div></div>
+          <div class="qa-item"><div class="qa-q" data-i18n>【活動文脈固有の振り返り】</div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s2, ENT_QUOTES, 'UTF-8')); ?></div></div>
+          <div class="qa-item"><div class="qa-q" data-i18n>【研究固有の振り返り】</div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s3, ENT_QUOTES, 'UTF-8')); ?></div></div>
         </div>
         <div class="card-actions">
-          <button type="button" class="detail-button">詳細▼</button>
+          <button type="button" class="detail-button" data-i18n>詳細▼</button>
         </div>
       </div>
     </div>
   <?php } } else { ?>
-    <div class="no-fragment-note">表示できるフラグメントがありません。</div>
+    <div class="no-fragment-note" data-i18n>表示できるフラグメントがありません。</div>
   <?php } ?>
 </div>
 <!-- クリックハンドラは meeting-reflection-network.js 側に集約 -->

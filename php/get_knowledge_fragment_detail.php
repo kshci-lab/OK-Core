@@ -61,7 +61,7 @@ function add_links(array &$links, string $sourceType, array $ids): void {
 }
 
 if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
-    echo '<div class="error">DB接続失敗</div>';
+    echo '<div class="error" data-i18n>DB接続失敗</div>';
     exit;
 }
 @$mysqli->set_charset('utf8mb4');
@@ -70,7 +70,7 @@ $userId = isset($_SESSION['USERID']) ? (string)$_SESSION['USERID'] : '';
 $groupAccess = ok_core_resolve_active_group($mysqli, $requestedGroupId, $userId);
 if ($groupAccess['status'] !== 200 || $groupAccess['group_id'] === '') {
     http_response_code($groupAccess['status'] !== 200 ? $groupAccess['status'] : 403);
-    echo '<div class="error">表示できる組織がありません。</div>';
+    echo '<div class="error" data-i18n>表示できる組織がありません。</div>';
     exit;
 }
 $groupId = (int)$groupAccess['group_id'];
@@ -81,7 +81,7 @@ if ($nodeId > 0) {
     $stmt = $mysqli->prepare('SELECT knowledge_node_id FROM knowledge_explorer WHERE knowledge_node_id = ? AND knowledge_group_id = ? AND deleted = 0 LIMIT 1');
     if (!$stmt) {
         http_response_code(500);
-        echo '<div class="error">組織知を確認できませんでした。</div>';
+        echo '<div class="error" data-i18n>組織知を確認できませんでした。</div>';
         exit;
     }
     $stmt->bind_param('ii', $nodeId, $groupId);
@@ -91,7 +91,7 @@ if ($nodeId > 0) {
     $stmt->close();
     if (!$found) {
         http_response_code(404);
-        echo '<div class="error">組織知が見つかりません。</div>';
+        echo '<div class="error" data-i18n>組織知が見つかりません。</div>';
         exit;
     }
 }
@@ -159,7 +159,7 @@ if (!$links && $nodeId > 0 && table_exists($mysqli, 'knowledge_explorer')) {
 }
 
 if (!$links) {
-    echo '<div class="error">'.h('フラグメントIDが特定できませんでした（node_id='.$nodeId.'）。').'</div>';
+    echo '<div class="error"><span data-i18n>フラグメントIDが特定できませんでした。</span> (node_id='.h($nodeId).')</div>';
     exit;
 }
 
@@ -244,20 +244,20 @@ $orderedLinks = array_values(array_filter($orderedLinks, static function ($link)
 }));
 if (!$orderedLinks) {
     http_response_code(404);
-    echo '<div class="error">この組織で参照できるフラグメントがありません。</div>';
+    echo '<div class="error" data-i18n>この組織で参照できるフラグメントがありません。</div>';
     exit;
 }
 
-echo '<div class="knowledge-detail-summary">選択したフラグメント数: '.count($orderedLinks).'</div>';
+echo '<div class="knowledge-detail-summary"><span data-i18n>選択したフラグメント数:</span> '.count($orderedLinks).'</div>';
 
 foreach ($orderedLinks as $idx => $link) {
     $key = $link['type'] . ':' . $link['id'];
     if (!isset($rows[$key])) {
         if ($link['type'] === 'SRL') {
-            echo '<div class="knowledge-detail-fragment error">SRL:'.h($link['id']).' の詳細取得先が未設定です。</div>';
+            echo '<div class="knowledge-detail-fragment error">SRL:'.h($link['id']).'<span data-i18n=" の詳細取得先が未設定です。"> の詳細取得先が未設定です。</span></div>';
             continue;
         }
-        echo '<div class="knowledge-detail-fragment error">'.h($key).' の情報が見つかりません。</div>';
+        echo '<div class="knowledge-detail-fragment error">'.h($key).'<span data-i18n=" の情報が見つかりません。"> の情報が見つかりません。</span></div>';
         continue;
     }
     $row = $rows[$key];
@@ -269,15 +269,15 @@ foreach ($orderedLinks as $idx => $link) {
     $s3 = isset($row['stage3']) ? (string)$row['stage3'] : '';
     ?>
     <div class="knowledge-detail-fragment knowledge_fragment" data-source-type="<?php echo h($link['type']); ?>" data-source-id="<?php echo (int)$link['id']; ?>">
-      <div class="card-title">フラグメント<?php echo (int)($idx + 1); ?>: <?php echo nl2br(h($content)); ?></div>
-      <div class="card-meta">種類: <?php echo h($link['type']); ?> / 共有したユーザー: <?php echo h($userName); ?></div>
+      <div class="card-title"><span data-i18n>フラグメント</span> <?php echo (int)($idx + 1); ?>: <?php echo nl2br(h($content)); ?></div>
+      <div class="card-meta"><span data-i18n>種類:</span> <?php echo h($link['type']); ?> / <span data-i18n>共有したユーザー:</span> <?php echo h($userName); ?></div>
       <?php if (trim($selected) !== '') { ?>
-        <div class="selected-utterance">経験: <?php echo nl2br(h($selected)); ?></div>
+        <div class="selected-utterance"><span data-i18n>経験</span>: <?php echo nl2br(h($selected)); ?></div>
       <?php } ?>
       <div class="card-detail" aria-hidden="false">
-        <div class="qa-item"><div class="qa-q">【経験の振り返り】</div><div class="qa-a"><?php echo nl2br(h($s1)); ?></div></div>
-        <div class="qa-item"><div class="qa-q">【活動文脈固有の振り返り】</div><div class="qa-a"><?php echo nl2br(h($s2)); ?></div></div>
-        <div class="qa-item"><div class="qa-q">【研究固有の振り返り】</div><div class="qa-a"><?php echo nl2br(h($s3)); ?></div></div>
+        <div class="qa-item"><div class="qa-q" data-i18n>【経験の振り返り】</div><div class="qa-a"><?php echo nl2br(h($s1)); ?></div></div>
+        <div class="qa-item"><div class="qa-q" data-i18n>【活動文脈固有の振り返り】</div><div class="qa-a"><?php echo nl2br(h($s2)); ?></div></div>
+        <div class="qa-item"><div class="qa-q" data-i18n>【研究固有の振り返り】</div><div class="qa-a"><?php echo nl2br(h($s3)); ?></div></div>
       </div>
     </div>
     <?php

@@ -1,6 +1,8 @@
 (function () {
     'use strict';
 
+    const ui = window.okCoreLanguage;
+
     const byId = (id) => document.getElementById(id);
     let fragmentId = '';
     let groupId = '';
@@ -10,7 +12,7 @@
 
     function setStatus(text, isError) {
         const status = byId('transcript-status');
-        status.textContent = text;
+        ui.bind(status, text);
         status.classList.toggle('is-error', !!isError);
     }
 
@@ -46,12 +48,15 @@
         (transcript.sessions || []).forEach((session) => {
             const option = document.createElement('option');
             option.value = String(session.session_id);
-            option.textContent = String(session.title) + '（関連発言 ' + session.linked_count + '件）';
+            ui.bind(option, () => ui.t('{title}（関連発言 {count}件）', {
+                title: session.title_is_fallback ? ui.t('セッション {id}', { id: session.session_id }) : session.title,
+                count: session.linked_count,
+            }));
             select.appendChild(option);
         });
         select.value = String(transcript.session_id);
-        byId('transcript-kf-title').textContent = transcript.title
-            ? 'KF「' + transcript.title + '」' : 'KFの根拠となった議論';
+        ui.bind(byId('transcript-kf-title'), transcript.title ? 'KF「{title}」' : 'KFの根拠となった議論',
+            { title: transcript.title });
         const list = byId('transcript-utterances');
         const rows = document.createDocumentFragment();
         (transcript.utterances || []).forEach((utterance) => {
@@ -60,7 +65,8 @@
             const meta = document.createElement('div');
             meta.className = 'transcript-utterance-meta';
             const speaker = document.createElement('strong');
-            speaker.textContent = String(utterance.speaker_name || '話者不明');
+            if (utterance.speaker_name && !utterance.speaker_name_is_fallback) speaker.textContent = String(utterance.speaker_name);
+            else ui.bind(speaker, '話者不明');
             const time = document.createElement('time');
             time.textContent = String(utterance.uttered_at || '');
             if (utterance.uttered_at) time.dateTime = String(utterance.uttered_at).replace(' ', 'T');
@@ -68,7 +74,7 @@
             if (utterance.is_linked) {
                 const badge = document.createElement('span');
                 badge.className = 'transcript-linked-badge';
-                badge.textContent = 'KFに紐づく発言';
+                ui.bind(badge, 'KFに紐づく発言');
                 meta.appendChild(badge);
             }
             const content = document.createElement('p');
@@ -79,13 +85,14 @@
         list.replaceChildren(rows);
         page = transcript.page;
         const start = page.total ? page.offset + 1 : 0;
-        byId('transcript-page').textContent = start + '–' + (page.offset + transcript.utterances.length)
-            + ' / ' + page.total + ' 発言';
-        let message = 'セッション全体の発言を時系列で表示しています。色付きの発言がこのKFに紐づいています。';
-        if (transcript.unassigned_link_count) {
-            message += ' セッション未登録の関連発言が' + transcript.unassigned_link_count + '件あります。';
-        }
-        setStatus(message, false);
+        ui.bind(byId('transcript-page'), '{start}–{end} / {total} 発言', {
+            start, end: page.offset + transcript.utterances.length, total: page.total,
+        });
+        setStatus(() => {
+            const message = ui.t('セッション全体の発言を時系列で表示しています。色付きの発言がこのKFに紐づいています。');
+            const count = transcript.unassigned_link_count;
+            return count ? message + ui.t(' セッション未登録の関連発言が{count}件あります。', { count }) : message;
+        }, false);
     }
 
     async function load(sessionId, offset) {
@@ -104,7 +111,7 @@
             const result = await response.json();
             if (current !== serial) return;
             if (!response.ok || result.status !== 'ok' || !result.transcript) {
-                setStatus(result.message || '文字起こしを取得できません。', true);
+                setStatus(() => ui.t(ui.error(result.message, '文字起こしを取得できません。')), true);
                 return;
             }
             render(result.transcript);
@@ -135,7 +142,7 @@
         fragmentId = id;
         groupId = selectedGroup;
         byId('transcript-session').replaceChildren();
-        byId('transcript-kf-title').textContent = 'KFの根拠となった議論';
+        ui.bind(byId('transcript-kf-title'), 'KFの根拠となった議論');
         const dialog = byId('discussion-transcript-dialog');
         if (!dialog.open) dialog.showModal();
         load();
