@@ -4,7 +4,10 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 mysqli_report(MYSQLI_REPORT_OFF);
 
+require_once __DIR__ . '/vcs_kf_api_auth.php';
+vcs_kf_require_service_bearer();
 require_once __DIR__ . '/connect_db.php';
+require_once __DIR__ . '/knowledge_group_access.php';
 
 function imported_kf_respond(int $statusCode, array $payload): void
 {
@@ -218,6 +221,8 @@ if ($sourceSystem === '' || $sourceType === '' || $sourceId === '') {
     ]);
 }
 
+vcs_kf_require_source($sourceSystem, $sourceType);
+
 $sql = 'SELECT externalized_contents_id,
                group_id,
                source_system,
@@ -288,7 +293,24 @@ if (!$found) {
     ]);
 }
 
+if (vcs_kf_api_auth_required()) {
+    // Older VCS KFs use typed shares while their row-level group_id is 0.
+    $allowedGroup = null;
+    foreach (explode(',', (string)getenv('OKCORE_VCS_ALLOWED_GROUP_IDS')) as $candidate) {
+        $candidate = trim($candidate);
+        if (ctype_digit($candidate) && (int)$candidate > 0
+            && ok_core_group_has_fragments($mysqli, $candidate, 'discussion', [(int)$externalizedContentsId])) {
+            $allowedGroup = $candidate;
+            break;
+        }
+    }
+    if ($allowedGroup === null) vcs_kf_api_forbidden(403, 'KF is not shared with an allowed group');
+    $groupId = (int)$allowedGroup;
+}
 $organization = imported_kf_find_organization($mysqli, (int)$externalizedContentsId);
+if (vcs_kf_api_auth_required() && (int)($organization['organizationGroupId'] ?? 0) !== (int)$groupId) {
+    $organization = [];
+}
 $organizationNodeId = $organization['organizationNodeId'] ?? null;
 $organizationStatus = $organizationNodeId ? 'organized' : 'imported';
 
