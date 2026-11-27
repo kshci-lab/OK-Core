@@ -337,6 +337,14 @@ if (!empty($__kfrag_list)) {
     }
   }
 
+  // Preserve manually saved canvas order. Unpositioned cards retain the registration order.
+  if ($canvasMap !== []) {
+    usort($__kfrag_list, static function (array $a, array $b) use ($canvasMap): int {
+      $aKey = $a['source_type'] . ':' . (int)$a['source_id'];
+      $bKey = $b['source_type'] . ':' . (int)$b['source_id'];
+      return ($canvasMap[$aKey]['y'] ?? INF) <=> ($canvasMap[$bKey]['y'] ?? INF);
+    });
+  }
 }
 
 $mysqli->close();
