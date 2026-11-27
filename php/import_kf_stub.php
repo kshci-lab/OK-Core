@@ -4,7 +4,10 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 mysqli_report(MYSQLI_REPORT_OFF);
 
+require_once __DIR__ . '/vcs_kf_api_auth.php';
+vcs_kf_require_service_bearer();
 require_once __DIR__ . '/connect_db.php';
+require_once __DIR__ . '/knowledge_group_access.php';
 require_once __DIR__ . '/shared_fragment_storage.php';
 
 function import_kf_respond(int $statusCode, array $payload): void
@@ -90,6 +93,7 @@ function import_kf_ensure_schema(mysqli $mysqli): void
     import_kf_ensure_column($mysqli, 'externalized_contents', 'source_type', 'VARCHAR(32) DEFAULT NULL', 'source_system');
     import_kf_ensure_column($mysqli, 'externalized_contents', 'source_id', 'VARCHAR(191) DEFAULT NULL', 'source_type');
     import_kf_ensure_column($mysqli, 'externalized_contents', 'source_user_ref', 'VARCHAR(191) DEFAULT NULL', 'source_id');
+    import_kf_ensure_column($mysqli, 'externalized_contents', 'title', 'VARCHAR(255) DEFAULT NULL', 'source_user_ref');
     import_kf_ensure_column($mysqli, 'externalized_contents', 'raw_payload', 'LONGTEXT DEFAULT NULL', 'source_user_ref');
 
     import_kf_ensure_index($mysqli, 'externalized_contents', 'ux_externalized_source_fragment', 'UNIQUE KEY `ux_externalized_source_fragment` (`source_system`,`source_type`,`source_id`)');
@@ -293,6 +297,8 @@ function import_kf_resolve_user_id(
         }
     }
 
+    if (vcs_kf_api_auth_required()) vcs_kf_api_forbidden(403, 'VCS user mapping is required');
+
     return import_kf_get_or_create_external_user_id(
         $mysqli,
         $sourceSystem,
@@ -381,7 +387,7 @@ if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
 }
 
 @$mysqli->set_charset('utf8mb4');
-import_kf_ensure_schema($mysqli);
+
 
 [$payload, $rawJson] = import_kf_read_payload();
 
@@ -389,6 +395,7 @@ $sourceSystem = import_kf_trimmed_string($payload['source_system'] ?? '');
 if (strcasecmp($sourceSystem, 'OKDiag') === 0) {
     import_kf_respond(410, ['success'=>false,'message'=>'OKDiag must use /php/api/import_okdiag_kf.php']);
 }
+if (!vcs_kf_api_auth_required()) import_kf_ensure_schema($mysqli);
 $sourceType = strtolower(import_kf_trimmed_string($payload['source_type'] ?? ''));
 $sourceId = import_kf_trimmed_string($payload['source_id'] ?? '');
 $sourceUserRef = import_kf_trimmed_string($payload['source_user_ref'] ?? '');
@@ -428,6 +435,14 @@ if ($sourceSystem === '' || $sourceId === '' || $knowledgeFragmentContent === ''
     ]);
 }
 
+$vcsTitle = null;
+if ($sourceSystem === 'discussion-kf-system' && array_key_exists('title', $payload)) {
+    if (!is_string($payload['title']) || !preg_match('/^.{0,255}$/usD', $payload['title'])) {
+        import_kf_respond(400, ['success' => false, 'message' => 'Invalid title']);
+    }
+    $vcsTitle = $payload['title'];
+}
+
 $groupId = 0;
 if ($groupRaw !== '') {
     if (!ctype_digit($groupRaw)) {
@@ -442,7 +457,16 @@ if ($groupRaw !== '') {
 $sourceUserRefValue = ($sourceUserRef === '') ? null : $sourceUserRef;
 $rawPayloadValue = $rawJson;
 
+vcs_kf_require_source($sourceSystem, $sourceType);
+vcs_kf_require_group($groupRaw);
 $importUserId = import_kf_resolve_user_id($mysqli, $sourceSystem, $sourceUserRef, $sourceUserName);
+if (vcs_kf_api_auth_required()) {
+    $membership = ok_core_resolve_active_group($mysqli, $groupRaw, (string)$importUserId);
+    if ((string)($membership['group_id'] ?? '') !== $groupRaw) {
+        vcs_kf_api_forbidden(403, 'VCS user is not a group member');
+    }
+}
+
 
 $checkSql = 'SELECT externalized_contents_id
                FROM externalized_contents
@@ -471,11 +495,14 @@ if (!$checkStmt->execute()) {
 $checkStmt->bind_result($existingId);
 if ($checkStmt->fetch()) {
     $checkStmt->close();
+    if (vcs_kf_api_auth_required() && !ok_core_group_has_fragments($mysqli, $groupRaw, 'discussion', [(int)$existingId])) {
+        vcs_kf_api_forbidden(403, 'KF is not shared with the allowed group');
+    }
     try {
         $mysqli->begin_transaction();
-        $updateStmt = $mysqli->prepare('UPDATE externalized_contents SET user_id = ?, source_user_ref = ?, raw_payload = ?, updated_at = NOW() WHERE externalized_contents_id = ?');
+        $updateStmt = $mysqli->prepare('UPDATE externalized_contents SET user_id = ?, source_user_ref = ?, title = COALESCE(?, title, CASE WHEN source_system = \'discussion-kf-system\' THEN JSON_UNQUOTE(JSON_EXTRACT(raw_payload, \'$.title\')) END), raw_payload = ?, updated_at = NOW() WHERE externalized_contents_id = ?');
         if (!$updateStmt) throw new RuntimeException('fragment_update_prepare_failed');
-        $updateStmt->bind_param('issi', $importUserId, $sourceUserRefValue, $rawPayloadValue, $existingId);
+        $updateStmt->bind_param('isssi', $importUserId, $sourceUserRefValue, $vcsTitle, $rawPayloadValue, $existingId);
         if (!$updateStmt->execute()) throw new RuntimeException('fragment_update_failed');
         $updateStmt->close();
         ok_core_register_discussion_share($mysqli, (int)$existingId, $groupId);
@@ -501,8 +528,8 @@ $thoughtExperienceNodeId = $sourceId;
 $insertSql = 'INSERT INTO externalized_contents
     (user_id, group_id, remarked_utterance_id, thought_experience_node_id, externalized_type,
      used_remarked_utterance, selected_contents, knowledge_fragment_content, stage1, stage2, stage3,
-     source_system, source_type, source_id, source_user_ref, raw_payload, discussed)
-    VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+     source_system, source_type, source_id, source_user_ref, title, raw_payload, discussed)
+    VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
 $stmt = $mysqli->prepare($insertSql);
 if (!$stmt) {
@@ -516,7 +543,7 @@ if (!$stmt) {
 $remarkedUtteranceId = null;
 $discussed = 'DONE';
 $stmt->bind_param(
-    'iissssssssssssss',
+    'iisssssssssssssss',
     $importUserId,
     $groupId,
     $remarkedUtteranceId,
@@ -531,6 +558,7 @@ $stmt->bind_param(
     $sourceType,
     $sourceId,
     $sourceUserRefValue,
+    $vcsTitle,
     $rawPayloadValue,
     $discussed
 );

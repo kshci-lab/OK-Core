@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . "/kf_discussion_view.php";
 // get_knowledge_fragment_detail.php
 // Input: node_id (knowledge_explorer node) or typed fragment ids.
 // Output: HTML snippet for one or more knowledge fragments.
@@ -208,25 +209,28 @@ if ($idsByType['discussion'] && table_exists($mysqli, 'externalized_contents')) 
     $ids = $idsByType['discussion'];
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     $contentCol = column_exists($mysqli, 'externalized_contents', 'knowledge_fragments_content') ? 'knowledge_fragments_content' : 'knowledge_fragment_content';
-    $sql = "SELECT ec.externalized_contents_id AS source_id,
+    $discussionTable = kf_discussion_read_table($mysqli);
+    $sql = "SELECT ec.externalized_contents_id AS source_id, ec.source_system, ec.source_user_ref, ec.title, ec.raw_payload,
                    ec.`$contentCol` AS content,
                    ec.selected_contents,
                    ec.stage1,
                    ec.stage2,
                    ec.stage3,
                    COALESCE(u.name,'') AS user_name
-              FROM externalized_contents ec
+              FROM {$discussionTable} ec
               LEFT JOIN users u ON u.user_id = ec.user_id
              WHERE ec.externalized_contents_id IN ($placeholders)
                AND ec.deleted = 0
-               AND EXISTS (SELECT 1 FROM shared_nodes sn
+               AND ((ec.source_system='OKDiag' AND ec.source_user_ref='okdiag-ai' AND ec.group_id=?) OR
+                        ((ec.source_system IS NULL OR ec.source_system<>'OKDiag') AND EXISTS (SELECT 1 FROM shared_nodes sn
                             WHERE sn.knowledge_fragment_id = ec.externalized_contents_id
                               AND sn.fragment_source_type = 'discussion'
-                              AND sn.knowledge_group_id = ? AND sn.deleted = 0)";
-    $types = str_repeat('i', count($ids)) . 'i';
+                              AND sn.knowledge_group_id = ? AND sn.deleted = 0)))";
+    $types = str_repeat('i', count($ids)) . 'ii';
     if ($stmt = $mysqli->prepare($sql)) {
         $bind = [$types];
         foreach ($ids as $i => $id) { $bind[] = &$ids[$i]; }
+        $bind[] = &$groupId;
         $bind[] = &$groupId;
         call_user_func_array([$stmt, 'bind_param'], $bind);
         if ($stmt->execute() && ($res = $stmt->get_result())) {
@@ -261,7 +265,13 @@ foreach ($orderedLinks as $idx => $link) {
         continue;
     }
     $row = $rows[$key];
-    $content = isset($row['content']) ? (string)$row['content'] : '';
+    if ($discussionView = kf_discussion_view($row)) {
+        echo '<div class="knowledge-detail-fragment knowledge_fragment" data-source-type="'.h($link['type']).'" data-source-id="'.(int)$link['id'].'">';
+        kf_render_discussion_card($discussionView, true);
+        echo '</div>';
+        continue;
+    }
+    $view = kf_card_view($row);
     $userName = isset($row['user_name']) && trim((string)$row['user_name']) !== '' ? (string)$row['user_name'] : 'ユーザー';
     $selected = isset($row['selected_contents']) ? (string)$row['selected_contents'] : '';
     $s1 = isset($row['stage1']) ? (string)$row['stage1'] : '';
@@ -269,7 +279,8 @@ foreach ($orderedLinks as $idx => $link) {
     $s3 = isset($row['stage3']) ? (string)$row['stage3'] : '';
     ?>
     <div class="knowledge-detail-fragment knowledge_fragment" data-source-type="<?php echo h($link['type']); ?>" data-source-id="<?php echo (int)$link['id']; ?>">
-      <div class="card-title"><span data-i18n>フラグメント</span> <?php echo (int)($idx + 1); ?>: <?php echo nl2br(h($content)); ?></div>
+      <div class="card-title"><span data-i18n>フラグメント</span> <?php echo (int)($idx + 1); ?>: <?php echo nl2br(h($view['title'])); ?></div>
+      <?php if ($view['content'] !== ''): ?><div><?=nl2br(h($view['content']))?></div><?php endif ?>
       <div class="card-meta"><span data-i18n>種類:</span> <?php echo h($link['type']); ?> / <span data-i18n>共有したユーザー:</span> <?php echo h($userName); ?></div>
       <?php if (trim($selected) !== '') { ?>
         <div class="selected-utterance"><span data-i18n>経験</span>: <?php echo nl2br(h($selected)); ?></div>
