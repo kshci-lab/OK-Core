@@ -386,6 +386,9 @@ import_kf_ensure_schema($mysqli);
 [$payload, $rawJson] = import_kf_read_payload();
 
 $sourceSystem = import_kf_trimmed_string($payload['source_system'] ?? '');
+if (strcasecmp($sourceSystem, 'OKDiag') === 0) {
+    import_kf_respond(410, ['success'=>false,'message'=>'OKDiag must use /php/api/import_okdiag_kf.php']);
+}
 $sourceType = strtolower(import_kf_trimmed_string($payload['source_type'] ?? ''));
 $sourceId = import_kf_trimmed_string($payload['source_id'] ?? '');
 $sourceUserRef = import_kf_trimmed_string($payload['source_user_ref'] ?? '');
