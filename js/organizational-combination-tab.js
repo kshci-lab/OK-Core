@@ -69,9 +69,12 @@
   function applyFragmentSourceFilter(){
     var workspace = document.getElementById('knowledge_fragments_workspace');
     if(!workspace) return;
+    var aiToggle = qs('.kfrag-show-ai', workspace);
+    var showAI = !aiToggle || aiToggle.checked;
     qsa('.fragment-node-wrapper', workspace).forEach(function(wrap){
       var sourceTypes = parseSourceTypes(wrap.getAttribute('data-source-type'), 'experience');
-      wrap.style.display = matchesSourceFilter(sourceTypes, 'fragments') ? '' : 'none';
+      var allowedByAuthor = showAI || wrap.getAttribute('data-kfrag-ai') !== '1';
+      wrap.style.display = allowedByAuthor && matchesSourceFilter(sourceTypes, 'fragments') ? '' : 'none';
     });
   }
 
@@ -262,6 +265,30 @@
     }catch(_){ }
   }
 
+  function applyKfragChronology(workspace){
+    var list = qs('.knowledge-fragment-list', workspace);
+    var select = qs('.kfrag-chronology', workspace);
+    if(!list || !select || workspace.classList.contains('is-canvas-mode')) return;
+
+    var direction = select.value === 'oldest' ? 1 : -1;
+    var entries = Array.from(list.children).filter(function(wrapper){
+      return wrapper.classList.contains('fragment-node-wrapper');
+    }).map(function(wrapper, index){
+      var value = wrapper.getAttribute('data-kfrag-registered-at');
+      if (!wrapper.hasAttribute('data-kfrag-list-order')) {
+        wrapper.setAttribute('data-kfrag-list-order', String(index));
+      }
+      return { wrapper: wrapper, timestamp: value === null ? null : Number(value) };
+    });
+    entries.sort(function(a, b){
+      if(select.value === 'saved') return Number(a.wrapper.getAttribute('data-kfrag-list-order')) - Number(b.wrapper.getAttribute('data-kfrag-list-order'));
+      if(a.timestamp === null) return b.timestamp === null ? 0 : 1;
+      if(b.timestamp === null) return -1;
+      return direction * (a.timestamp - b.timestamp);
+    });
+    entries.forEach(function(entry){ list.appendChild(entry.wrapper); });
+  }
+
   function ensureKfragViewControls(workspace){
     if(!workspace) return;
     var group = qs('.kfrag-action-group', workspace);
@@ -289,6 +316,36 @@
     viewGroup.appendChild(listBtn);
     viewGroup.appendChild(canvasBtn);
     group.insertBefore(viewGroup, group.firstChild);
+
+    var chronology = document.createElement('select');
+    chronology.className = 'kfrag-chronology';
+    ui.bind(chronology, 'KFの登録日時順', undefined, 'aria-label');
+    [['saved', '配置順'], ['newest', '新しい順'], ['oldest', '古い順']].forEach(function(item){
+      var option = document.createElement('option');
+      option.value = item[0];
+      ui.bind(option, item[1]);
+      chronology.appendChild(option);
+    });
+    chronology.addEventListener('change', function(){
+      applyKfragChronology(workspace);
+      renderKfragRelations(workspace);
+    });
+    group.appendChild(chronology);
+
+    var aiLabel = document.createElement('label');
+    var aiToggle = document.createElement('input');
+    aiToggle.type = 'checkbox';
+    aiToggle.className = 'kfrag-show-ai';
+    aiToggle.checked = true;
+    var aiText = document.createElement('span');
+    ui.bind(aiText, 'AI作成KFを表示');
+    aiLabel.appendChild(aiToggle);
+    aiLabel.appendChild(aiText);
+    group.appendChild(aiLabel);
+    aiToggle.addEventListener('change', function(){
+      applyFragmentSourceFilter();
+      renderKfragRelations(workspace);
+    });
 
     var zoomGroup = document.createElement('span');
     zoomGroup.className = 'kfrag-zoom-switch';
@@ -442,6 +499,7 @@
         w.style.zIndex = '';
       });
     }
+    applyKfragChronology(workspace);
     applyKfragCanvasZoom(workspace, getKfragCanvasZoom(), false);
     try{
       if(window.activeKnowledgeLinkedFragmentIds && window.activeKnowledgeLinkedFragmentIds.length){
