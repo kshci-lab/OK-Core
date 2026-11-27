@@ -228,6 +228,7 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
         const tooltipData = node.tooltip_data;
         this.tooltipEl.textContent = '';
         const sections = Array.isArray(tooltipData.sections) ? tooltipData.sections : [
+            ...(tooltipData.summary ? [{ heading: '知の要約', body: tooltipData.summary }] : []),
             { heading: '経験', body: tooltipData.selected_contents || '' },
             { heading: '経験の振り返り', body: tooltipData.stage1 || '' },
             { heading: '活動文脈固有の振り返り', body: tooltipData.stage2 || '' },
@@ -385,7 +386,7 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
         return this.nodes;
     }
 
-    addReloadProcessNode(user_id, node_id, node_label, node_type, concept_id, thought_experience_node_id, selected_contents, stage1, stage2, stage3, source_type, source_id) {
+    addReloadProcessNode(user_id, node_id, node_label, node_type, concept_id, thought_experience_node_id, selected_contents, stage1, stage2, stage3, source_type, source_id, summary) {
         const existingNode = this.nodes.get(node_id);
         if (existingNode) {
             console.log(`Node with ID ${node_id} already exists. Skipping addition.`);
@@ -416,6 +417,7 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
             shape: node_shape,
             font: { color: text_color },
             tooltip_data: {
+                summary,
                 selected_contents: selected_contents,
                 stage1: stage1,
                 stage2: stage2,
@@ -744,6 +746,16 @@ class Organizational { // forestMRN: forest Meeting Reflection Network
                 updated_at: '',
                 knowledge_fragment_id: ktNode.getAttribute('data-kfrag-id') || ''
             };
+            const refs = ktNode.getAttribute('data-kfrag-refs') || '';
+            if (refs) {
+                nodeInfo.fragment_source_ids = {};
+                refs.split(',').forEach((ref) => {
+                    const [rawType, id] = ref.split(':');
+                    const type = this.normalizeSourceType(rawType);
+                    if (!type || !/^\d+$/.test(id || '')) return;
+                    (nodeInfo.fragment_source_ids[type] ??= []).push(id);
+                });
+            }
             const sourceTypes = ktNode.getAttribute('data-source-types') || '';
             if (sourceTypes) {
                 nodeInfo.fragment_source_types = sourceTypes.split(',');
@@ -1746,7 +1758,7 @@ const displayOrganizationalData = (mode, selected_group_id) => {
                 defaultOrganizational.addReloadProcessNode(
                     n.user_id,
                     n.display_node_id || defaultOrganizational.makeFragmentNodeId(n.source_type, n.source_id || n.experience_knowledge_id || n.externalized_contents_id),
-                    n.knowledge_fragment_content,
+                    n.title || n.knowledge_fragment_content,
                     n.experience_type,
                     n.concept_id,
                     n.thought_experience_node_id,
@@ -1755,7 +1767,8 @@ const displayOrganizationalData = (mode, selected_group_id) => {
                     n.stage2,
                     n.stage3,
                     n.source_type,
-                    n.source_id || n.experience_knowledge_id || n.externalized_contents_id
+                    n.source_id || n.experience_knowledge_id || n.externalized_contents_id,
+                    n.summary
                 );
             });
             defaultOrganizational.applyNodeDisplayStyles();

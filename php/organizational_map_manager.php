@@ -5,6 +5,7 @@ require_once __DIR__ . '/session_bootstrap.php';
 hcimlab_start_session();
 require_once __DIR__ . '/connect_db.php';
 require_once __DIR__ . '/knowledge_group_access.php';
+require_once __DIR__ . '/kf_card_view.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -152,22 +153,27 @@ if (!empty($user_ids_in_latest_group)) {
                 if ($resCol->num_rows > 0) { $contentCol = 'knowledge_fragments_content'; }
                 $resCol->free();
             }
-            $sql_externalized = "SELECT ec.externalized_contents_id, ec.user_id, ec.selected_contents, ec.`{$contentCol}` AS knowledge_fragment_content, ec.stage1, ec.stage2, ec.stage3, ec.updated_at
-                FROM externalized_contents ec
+            $discussionTable = kf_discussion_read_table($mysqli);
+            $sql_externalized = "SELECT ec.externalized_contents_id, ec.title, ec.raw_payload, ec.source_system, ec.user_id, ec.selected_contents, ec.`{$contentCol}` AS knowledge_fragment_content, ec.stage1, ec.stage2, ec.stage3, ec.updated_at
+                FROM {$discussionTable} ec
                 WHERE ec.deleted = 0
                     AND ec.`{$contentCol}` IS NOT NULL
                     AND LENGTH(TRIM(ec.`{$contentCol}`)) > 0";
-            $sql_externalized .= " AND EXISTS (SELECT 1 FROM shared_nodes sn
+            $sql_externalized .= " AND ((ec.source_system='OKDiag' AND ec.source_user_ref='okdiag-ai' AND ec.group_id=$selected_group_id_sql) OR ((ec.source_system IS NULL OR ec.source_system<>'OKDiag') AND EXISTS (SELECT 1 FROM shared_nodes sn
                                                WHERE sn.knowledge_fragment_id = ec.externalized_contents_id
                                                  AND sn.fragment_source_type = 'discussion'
                                                  AND sn.knowledge_group_id = $selected_group_id_sql
-                                                 AND sn.deleted = 0)";
+                                                 AND sn.deleted = 0)))";
             $sql_externalized .= " ORDER BY ec.updated_at DESC, ec.externalized_contents_id DESC";
             if ($result_externalized = $mysqli->query($sql_externalized)) {
                 while ($row = $result_externalized->fetch_assoc()) {
                     $row['source_type'] = 'discussion';
                     $row['source_id'] = isset($row['externalized_contents_id']) ? (int)$row['externalized_contents_id'] : null;
                     $row['display_node_id'] = 'discussion:' . (string)$row['source_id'];
+                    $view = kf_card_view($row + ['content' => $row['knowledge_fragment_content']]);
+                    $row['title'] = $view['title'];
+                    $row['summary'] = $view['content'];
+                    unset($row['raw_payload']);
                     $row['experience_type'] = 'discussion';
                     $row['thought_experience_node_id'] = null;
                     $organi_map_node[] = $row;

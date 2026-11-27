@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . "/kf_discussion_view.php";
 // get_knowledge_fragments_by_group.php (forest-mrn)
 // Return knowledge fragments list HTML filtered by the selected knowledge group.
 //
@@ -113,6 +114,7 @@ if ($resT = $mysqli->query("SHOW TABLES LIKE 'experience_knowledges'")) {
                      ek.knowledge_fragment_content AS content,
                      ek.stage1, ek.stage2, ek.stage3,
                      ek.selected_contents,
+                     UNIX_TIMESTAMP(ek.created_at) AS created_at,
                      ek.updated_at AS updated_at,
                      ek.user_id,
                      COALESCE(u.name,'') AS user_name,
@@ -148,7 +150,7 @@ if ($resT = $mysqli->query("SHOW TABLES LIKE 'experience_knowledges'")) {
               'discussed' => isset($row['discussed']) ? (string)$row['discussed'] : '',
               'source_type' => 'experience',
               'source_id' => isset($row['source_id']) ? (int)$row['source_id'] : null,
-              'updated_at' => isset($row['updated_at']) ? (string)$row['updated_at'] : ''
+              'created_at' => $row['created_at'] ?? null
             ];
           }
         }
@@ -159,6 +161,7 @@ if ($resT = $mysqli->query("SHOW TABLES LIKE 'experience_knowledges'")) {
                      ek.knowledge_fragment_content AS content,
                      ek.stage1, ek.stage2, ek.stage3,
                      ek.selected_contents,
+                     UNIX_TIMESTAMP(ek.created_at) AS created_at,
                      ek.updated_at,
                      ek.user_id,
                      COALESCE(u.name,'') AS user_name,
@@ -190,7 +193,7 @@ if ($resT = $mysqli->query("SHOW TABLES LIKE 'experience_knowledges'")) {
               'discussed' => isset($row['discussed']) ? (string)$row['discussed'] : '',
               'source_type' => 'experience',
               'source_id' => isset($row['source_id']) ? (int)$row['source_id'] : null,
-              'updated_at' => isset($row['updated_at']) ? (string)$row['updated_at'] : ''
+              'created_at' => $row['created_at'] ?? null
             ];
           }
         }
@@ -209,16 +212,18 @@ if ($resT = $mysqli->query("SHOW TABLES LIKE 'externalized_contents'")) {
       if ($resCol->num_rows > 0) { $contentCol = 'knowledge_fragments_content'; }
       $resCol->free();
     }
-    $sql = "SELECT ec.externalized_contents_id AS source_id,
+    $discussionTable = kf_discussion_read_table($mysqli);
+    $sql = "SELECT ec.externalized_contents_id AS source_id, ec.source_system, ec.source_user_ref, ec.title, ec.raw_payload,
                    ec.`{$contentCol}` AS content,
                    ec.stage1, ec.stage2, ec.stage3,
                    ec.selected_contents,
+                   UNIX_TIMESTAMP(ec.created_at) AS created_at,
                    ec.updated_at,
                    ec.user_id,
                    COALESCE(u.name,'') AS user_name,
                    ec.discussed,
                    'discussion' AS source_type
-              FROM externalized_contents ec
+              FROM {$discussionTable} ec
               LEFT JOIN users u ON u.user_id = ec.user_id
              WHERE ec.deleted = 0
                AND ec.`{$contentCol}` IS NOT NULL
@@ -227,11 +232,13 @@ if ($resT = $mysqli->query("SHOW TABLES LIKE 'externalized_contents'")) {
     $params = [];
     if ($group_id !== '') {
       $groupIdInt = intval($group_id, 10);
-      $sql .= " AND EXISTS (SELECT 1 FROM shared_nodes sn
+      $sql .= " AND ((ec.source_system='OKDiag' AND ec.source_user_ref='okdiag-ai' AND ec.group_id=?) OR
+                        ((ec.source_system IS NULL OR ec.source_system<>'OKDiag') AND EXISTS (SELECT 1 FROM shared_nodes sn
                             WHERE sn.knowledge_fragment_id = ec.externalized_contents_id
                               AND sn.fragment_source_type = 'discussion'
-                              AND sn.knowledge_group_id = ? AND sn.deleted = 0)";
-      $types = 'i';
+                              AND sn.knowledge_group_id = ? AND sn.deleted = 0)))";
+      $types = 'ii';
+      $params[] = $groupIdInt;
       $params[] = $groupIdInt;
     }
     $sql .= " ORDER BY ec.updated_at DESC, ec.externalized_contents_id DESC";
@@ -251,7 +258,7 @@ if ($resT = $mysqli->query("SHOW TABLES LIKE 'externalized_contents'")) {
             $__user_name = (string)$row['user_name'];
           }
           $__kfrag_list[] = [
-            'content' => $__val,
+            'content' => $__val, 'source_system'=>$row['source_system'], 'source_user_ref'=>$row['source_user_ref'], 'title'=>$row['title'], 'raw_payload'=>$row['raw_payload'],
             'stage1' => isset($row['stage1']) ? (string)$row['stage1'] : '',
             'stage2' => isset($row['stage2']) ? (string)$row['stage2'] : '',
             'stage3' => isset($row['stage3']) ? (string)$row['stage3'] : '',
@@ -260,7 +267,7 @@ if ($resT = $mysqli->query("SHOW TABLES LIKE 'externalized_contents'")) {
             'discussed' => isset($row['discussed']) ? (string)$row['discussed'] : '',
             'source_type' => 'discussion',
             'source_id' => isset($row['source_id']) ? (int)$row['source_id'] : null,
-            'updated_at' => isset($row['updated_at']) ? (string)$row['updated_at'] : ''
+            'created_at' => $row['created_at'] ?? null
           ];
         }
       }
@@ -269,16 +276,24 @@ if ($resT = $mysqli->query("SHOW TABLES LIKE 'externalized_contents'")) {
   }
 }
 
-if (!empty($__kfrag_list)) {
-  usort($__kfrag_list, function($a, $b) {
-    $at = isset($a['updated_at']) ? strtotime((string)$a['updated_at']) : 0;
-    $bt = isset($b['updated_at']) ? strtotime((string)$b['updated_at']) : 0;
-    if ($at !== $bt) { return ($at > $bt) ? -1 : 1; }
-    $ai = isset($a['source_id']) ? intval($a['source_id'], 10) : 0;
-    $bi = isset($b['source_id']) ? intval($b['source_id'], 10) : 0;
-    return ($ai > $bi) ? -1 : 1;
-  });
+function kf_list_registered_at(array $row): ?DateTimeImmutable
+{
+    $value = $row['created_at'] ?? null;
+    if ($value === null || !ctype_digit((string)$value) || (int)$value <= 0) {
+        return null;
+    }
+    return new DateTimeImmutable('@' . $value);
 }
+
+foreach ($__kfrag_list as &$item) {
+    $item['registration_time'] = kf_list_registered_at($item);
+}
+unset($item);
+usort($__kfrag_list, static function ($a, $b) {
+    $left = $a['registration_time']?->getTimestamp() ?? PHP_INT_MIN;
+    $right = $b['registration_time']?->getTimestamp() ?? PHP_INT_MIN;
+    return ($right <=> $left) ?: ([$b['source_type'], $b['source_id']] <=> [$a['source_type'], $a['source_id']]);
+});
 
 if (!empty($__kfrag_list)) {
   $totalInitial = count($__kfrag_list);
@@ -287,7 +302,6 @@ if (!empty($__kfrag_list)) {
   }
   unset($itemInitial);
 
-  $orderMap = [];
   $canvasMap = [];
   if ($resP = $mysqli->query("SHOW TABLES LIKE 'knowledge_fragment_positions'")) {
     $hasPositions = ($resP->num_rows > 0);
@@ -312,7 +326,6 @@ if (!empty($__kfrag_list)) {
         if ($resO = $mysqli->query($sqlPos)) {
           while ($rowO = $resO->fetch_assoc()) {
             $posId = (string)$rowO['fragment_source_type'].':'.intval($rowO['fragment_source_id'], 10);
-            $orderMap[$posId] = floatval($rowO['pos_y']);
             $canvasMap[$posId] = [
               'x' => isset($rowO['pos_x']) ? floatval($rowO['pos_x']) : 0.0,
               'y' => isset($rowO['pos_y']) ? floatval($rowO['pos_y']) : 0.0
@@ -323,26 +336,7 @@ if (!empty($__kfrag_list)) {
       }
     }
   }
-  if (!empty($orderMap)) {
-    $indexMap = [];
-    foreach ($__kfrag_list as $idx => $item) {
-      $key = (string)($item['source_type'] ?? 'experience').':'.intval($item['source_id'] ?? 0, 10);
-      $indexMap[$key] = $idx;
-    }
-    usort($__kfrag_list, function($a, $b) use ($orderMap, $indexMap) {
-      $aid = (string)($a['source_type'] ?? 'experience').':'.intval($a['source_id'] ?? 0, 10);
-      $bid = (string)($b['source_type'] ?? 'experience').':'.intval($b['source_id'] ?? 0, 10);
-      $ap = array_key_exists($aid, $orderMap) ? $orderMap[$aid] : PHP_INT_MAX;
-      $bp = array_key_exists($bid, $orderMap) ? $orderMap[$bid] : PHP_INT_MAX;
-      if ($ap == $bp) {
-        $ai = array_key_exists($aid, $indexMap) ? $indexMap[$aid] : PHP_INT_MAX;
-        $bi = array_key_exists($bid, $indexMap) ? $indexMap[$bid] : PHP_INT_MAX;
-        if ($ai == $bi) { return 0; }
-        return ($ai < $bi) ? -1 : 1;
-      }
-      return ($ap < $bp) ? -1 : 1;
-    });
-  }
+
 }
 
 $mysqli->close();
@@ -367,6 +361,11 @@ $mysqli->close();
       $sourceType = isset($__kfrag_raw['source_type']) ? (string)$__kfrag_raw['source_type'] : 'experience';
       $sourceId = isset($__kfrag_raw['source_id']) ? intval($__kfrag_raw['source_id'],10) : 0;
       if($sourceId>0){ echo ' data-source-id="'.$sourceId.'"'; }
+      if (($__kfrag_raw['source_system'] ?? '') === 'OKDiag' && ($__kfrag_raw['source_user_ref'] ?? '') === 'okdiag-ai') {
+        echo ' data-kfrag-ai="1"';
+      }
+      $created = $__kfrag_raw['registration_time'];
+      if ($created !== null) { echo ' data-kfrag-registered-at="'.$created->getTimestamp().'"'; }
       $positionKey = $sourceType.':'.$sourceId;
       if($sourceId>0 && isset($canvasMap) && isset($canvasMap[$positionKey])){
         echo ' data-canvas-x="'.htmlspecialchars((string)$canvasMap[$positionKey]['x'], ENT_QUOTES, 'UTF-8').'"';
@@ -379,6 +378,15 @@ $mysqli->close();
       if($disc!==''){ echo ' data-discussed="'.htmlspecialchars($disc,ENT_QUOTES,'UTF-8').'"'; }
       if($sourceId>0){ echo ' data-source-id="'.$sourceId.'"'; }
     ?>>
+        <div class="kf-registered-at" style="text-align:right;font-size:0.85em">
+          <?php if ($created !== null) {
+              $jst = $created->setTimezone(new DateTimeZone('Asia/Tokyo')); ?>
+          <time aria-label="登録日時" datetime="<?= $jst->format(DATE_ATOM) ?>"><?= $jst->format('Y/m/d H:i') ?> JST</time>
+          <?php } else { ?><span data-i18n>登録日時不明</span><?php } ?>
+        </div>
+        <?php if ($discussionView = kf_discussion_view($__kfrag_raw)) {
+            kf_render_discussion_card($discussionView);
+        } else { ?>
         <div class="card-title"><?php echo htmlspecialchars($__uname, ENT_QUOTES, 'UTF-8'); ?> さん</div>
         <div class="card-body"><?php echo nl2br(htmlspecialchars($__tmp, ENT_QUOTES, 'UTF-8')); ?></div>
         <div class="card-detail" aria-hidden="true">
@@ -391,6 +399,7 @@ $mysqli->close();
           <div class="qa-item"><div class="qa-q" data-i18n>【活動文脈固有の振り返り】</div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s2, ENT_QUOTES, 'UTF-8')); ?></div></div>
           <div class="qa-item"><div class="qa-q" data-i18n>【研究固有の振り返り】</div><div class="qa-a"><?php echo nl2br(htmlspecialchars($__s3, ENT_QUOTES, 'UTF-8')); ?></div></div>
         </div>
+        <?php } ?>
         <div class="card-actions">
           <button type="button" class="detail-button">詳細▼</button>
         </div>
